@@ -108,7 +108,7 @@
 
         async function exportCalendar() {
     try {
-        // שולחים בקשה לשרת להכין את הקובץ
+        // 1. מבקשים את הקובץ מהשרת
         const response = await fetch("https://time-managment-app.onrender.com/export_calendar");
         
         if (!response.ok) {
@@ -116,89 +116,33 @@
             return;
         }
 
-        // מקבלים את הקובץ כגוש מידע (Blob)
+        // 2. מקבלים את המידע
         const blob = await response.blob();
         
-        // יוצרים לו כתובת זמנית בזיכרון של הטלפון
-        const url = window.URL.createObjectURL(blob);
-        
-        // מייצרים כפתור קישור בלתי נראה
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'aviv_schedule.ics'; // השם של הקובץ שיירד
-        
-        // מוסיפים אותו למסך, "לוחצים" עליו, ומעלימים אותו מיד
-        document.body.appendChild(a);
-        a.click();
-        
-        // מנקים את הזיכרון
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        // 3. הופכים אותו לקובץ שמוכן לשיתוף
+        const file = new File([blob], 'aviv_schedule.ics', { type: 'text/calendar' });
+
+        // 4. בודקים אם המכשיר תומך בתפריט שיתוף (האייפון תומך!)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'הלו"ז שלי',
+                text: 'הנה הלו"ז המעודכן מהמערכת החכמה'
+            });
+        } else {
+            // גיבוי למחשב רגיל (מה שניסינו קודם)
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'aviv_schedule.ics';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
         
     } catch (error) {
         alert("תקלה בייצוא: " + error);
     }
 }
-
-        // טעינה ראשונית
-        fetchTasks();
-
-        
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>Aviv's Smart Timer</title>
-    </head>
-<body>
-
-    <h1>ניהול זמן חכם</h1>
-
-    <div class="import-section" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc;">
-        <h3>ייבוא לו"ז מהאוניברסיטה או מגוגל</h3>
-        <input type="file" id="calendarFile" accept=".ics">
-        <button onclick="importCalendar()">שלח לשרת</button>
-    </div>
-
-    <script>
-        // אם יש לך פה כבר פונקציות קיימות (כמו הוספת משימה חכמה), 
-        // פשוט תרד שורה ותוסיף את הפונקציה החדשה מתחתיהן:
-
-        async function importCalendar() {
-            const fileInput = document.getElementById('calendarFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert("אחי, לא בחרת קובץ! תבחר קובץ .ics קודם.");
-                return;
-            }
-
-            // אורזים את הקובץ כדי לשלוח אותו לשרת
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-                // הכתובת של השרת שלך ב-Render! (החלף בשם המדויק אם זה שונה)
-                const response = await fetch("https://time-managment-app.onrender.com/import_calendar", {
-                    method: "POST",
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert(result.message); // קופצת הודעת הצלחה
-                } else {
-                    alert("שגיאה: " + result.error);
-                }
-            } catch (error) {
-                alert("תקלה בתקשורת מול השרת: " + error);
-            }
-        }
-    </script>
-</body>
-</html>
