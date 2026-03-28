@@ -106,9 +106,39 @@
             }
         }
 
-        function exportCalendar() {
-    // מחליף את כל ה-fetch המסובך בשורה אחת שפשוט שולחת את הדפדפן לכתובת:
-    window.location.href = "https://time-managment-app.onrender.com/export_calendar";
+        async function exportCalendar() {
+    try {
+        // שולחים בקשה לשרת להכין את הקובץ
+        const response = await fetch("https://time-managment-app.onrender.com/export_calendar");
+        
+        if (!response.ok) {
+            alert("שגיאה ביצירת היומן בשרת");
+            return;
+        }
+
+        // מקבלים את הקובץ כגוש מידע (Blob)
+        const blob = await response.blob();
+        
+        // יוצרים לו כתובת זמנית בזיכרון של הטלפון
+        const url = window.URL.createObjectURL(blob);
+        
+        // מייצרים כפתור קישור בלתי נראה
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'aviv_schedule.ics'; // השם של הקובץ שיירד
+        
+        // מוסיפים אותו למסך, "לוחצים" עליו, ומעלימים אותו מיד
+        document.body.appendChild(a);
+        a.click();
+        
+        // מנקים את הזיכרון
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+    } catch (error) {
+        alert("תקלה בייצוא: " + error);
+    }
 }
 
         // טעינה ראשונית
