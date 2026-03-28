@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מנהל הזמן של אביב</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans p-4">
+
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-10 p-6 border border-gray-200">
+        <h1 class="text-2xl font-bold text-center text-indigo-600 mb-6">היומן החכם שלי 🗓️</h1>
+
+        <div class="mb-8 flex gap-2">
+            <input type="text" id="taskTitle" placeholder="כתוב חופשי (למשל: ללמוד אלגוריתמים מחר)" 
+                   class="border border-gray-300 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            <button onclick="addTask()" 
+                    class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-700 transition min-w-[80px]">
+                הוסף
+            </button>
+        </div>
+
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">המשימות שלי:</h2>
+        
+        <div id="tasksList" class="space-y-3">
+            <p class="text-gray-400 text-center text-sm">טוען משימות...</p>
+        </div>
+
+        <button onclick="exportToCalendar()" 
+                class="w-full mt-6 bg-black text-white px-5 py-3 rounded-xl font-medium hover:bg-gray-800 transition flex justify-center items-center gap-2 shadow-md">
+            <span>📥</span> הוסף ליומן של האייפון
+        </button>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+
+        async function fetchTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks`);
+                const tasks = await response.json();
+                
+                const listElement = document.getElementById('tasksList');
+                listElement.innerHTML = ''; 
+
+                if(tasks.length === 0) {
+                    listElement.innerHTML = '<p class="text-gray-400 text-center text-sm">אין משימות כרגע. איזה כיף!</p>';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = "p-4 bg-gray-50 border border-gray-100 rounded-xl flex justify-between items-center shadow-sm";
+                    taskDiv.innerHTML = `
+                        <div>
+                            <h3 class="font-medium text-gray-800">${task.title}</h3>
+                            <p class="text-xs text-gray-500 mt-1">
+                                ⚡ אנרגיה: ${task.energy_level} | ⏱️ זמן: ${task.duration_minutes} דק'
+                            </p>
+                            <p class="text-xs text-indigo-500 mt-1 font-medium">
+                                📍 ${task.location_context !== 'Anywhere' ? task.location_context + " (" + task.estimated_transit_minutes + " דק' נסיעה)" : 'בכל מקום'}
+                            </p>
+                        </div>
+                    `;
+                    listElement.appendChild(taskDiv);
+                });
+            } catch (error) {
+                console.error("שגיאה בשליפת המשימות:", error);
+                document.getElementById('tasksList').innerHTML = '<p class="text-red-500 text-center text-sm">שגיאה בחיבור לשרת.</p>';
+            }
+        }
+
+        async function addTask() {
+            const titleInput = document.getElementById('taskTitle');
+            const freeText = titleInput.value;
+            if (!freeText) return; 
+
+            const btn = document.querySelector('button');
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = 'חושב... 🤖';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_URL}/smart_add_task`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: freeText })
+                });
+                
+                if (response.ok) {
+                    titleInput.value = ''; 
+                    fetchTasks(); 
+                } else {
+                    alert('הייתה בעיה בניתוח המשימה.');
+                }
+            } catch (error) {
+                console.error("שגיאה בהוספת משימה:", error);
+            } finally {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+
+        function exportToCalendar() {
+            window.location.href = `${API_URL}/export_calendar`;
+        }
+
+        // טעינה ראשונית
+        fetchTasks();
+    </script>
+</body>
+</html>
