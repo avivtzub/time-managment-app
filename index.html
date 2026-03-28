@@ -31,6 +31,11 @@
             <span>📥</span> הוסף ליומן של האייפון
         </button>
     </div>
+    <div class="import-section">
+    <input type="file" id="calendarFile" accept=".ics">
+    <button onclick="importCalendar()">ייבא אירועים קשיחים</button>
+</div>
+    
 
     <script>
         const API_URL = "https://time-managment-app.onrender.com";
@@ -108,6 +113,62 @@
 
         // טעינה ראשונית
         fetchTasks();
+
+        
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Aviv's Smart Timer</title>
+    </head>
+<body>
+
+    <h1>ניהול זמן חכם</h1>
+
+    <div class="import-section" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc;">
+        <h3>ייבוא לו"ז מהאוניברסיטה או מגוגל</h3>
+        <input type="file" id="calendarFile" accept=".ics">
+        <button onclick="importCalendar()">שלח לשרת</button>
+    </div>
+
+    <script>
+        // אם יש לך פה כבר פונקציות קיימות (כמו הוספת משימה חכמה), 
+        // פשוט תרד שורה ותוסיף את הפונקציה החדשה מתחתיהן:
+
+        async function importCalendar() {
+            const fileInput = document.getElementById('calendarFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("אחי, לא בחרת קובץ! תבחר קובץ .ics קודם.");
+                return;
+            }
+
+            // אורזים את הקובץ כדי לשלוח אותו לשרת
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                // הכתובת של השרת שלך ב-Render! (החלף בשם המדויק אם זה שונה)
+                const response = await fetch("https://aviv-smart-timer.onrender.com/import_calendar", {
+                    method: "POST",
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message); // קופצת הודעת הצלחה
+                } else {
+                    alert("שגיאה: " + result.error);
+                }
+            } catch (error) {
+                alert("תקלה בתקשורת מול השרת: " + error);
+            }
+        }
     </script>
 </body>
 </html>
