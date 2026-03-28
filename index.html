@@ -101,9 +101,10 @@
             }
         }
 
-        function exportToCalendar() {
-            window.location.href = `${API_URL}/export_calendar`;
-        }
+        function exportCalendar() {
+    // מחליף את כל ה-fetch המסובך בשורה אחת שפשוט שולחת את הדפדפן לכתובת:
+    window.location.href = "https://time-managment-app.onrender.com/export_calendar";
+}
 
         // טעינה ראשונית
         fetchTasks();

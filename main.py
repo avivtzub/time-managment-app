@@ -167,7 +167,8 @@ def export_calendar(session: Session = Depends(get_session)):
     ics_string = "\n".join(ics_content)
     
     return Response(content=ics_string, media_type="text/calendar", headers={
-        "Content-Disposition": "attachment; filename=aviv_schedule.ics"
+        # שינינו פה מ-attachment ל-inline
+        "Content-Disposition": "inline; filename=aviv_schedule.ics" 
     })
 @app.post("/import_calendar")
 @app.post("/import_calendar")
