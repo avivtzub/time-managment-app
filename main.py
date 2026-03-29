@@ -9,6 +9,11 @@ from datetime import datetime, timedelta
 import google.generativeai as genai
 import json
 from pydantic import BaseModel
+import os
+import json
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
+from fastapi.responses import RedirectResponse
 
 # 1. הגדרת המפתח של ה-AI
 import os
@@ -55,6 +60,43 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"],
 )
+# הרשאה לניהול יומן מלא
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+@app.get("/login")
+def login_with_google():
+    """הפונקציה שזורקת אותך למסך ההתחברות של גוגל"""
+    flow = Flow.from_client_secrets_file(
+        'credentials.json',
+        scopes=SCOPES,
+        redirect_uri='https://time-managment-app.onrender.com/auth/callback'
+    )
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    
+    return RedirectResponse(url=authorization_url)
+
+@app.get("/auth/callback")
+def auth_callback(code: str):
+    """הדלת שגוגל מחזירה אליה את הקוד הסודי אחרי שאישרת"""
+    flow = Flow.from_client_secrets_file(
+        'credentials.json',
+        scopes=SCOPES,
+        redirect_uri='https://time-managment-app.onrender.com/auth/callback'
+    )
+    
+    # ממירים את הקוד של גוגל ל-Token שאפשר לעבוד איתו
+    flow.fetch_token(code=code)
+    credentials = flow.credentials
+    
+    # שומרים את ה-Token לקובץ כדי שהשרת יזכור אותך
+    with open('token.json', 'w') as token_file:
+        token_file.write(credentials.to_json())
+        
+    return {"message": "ההתחברות לגוגל בוצעה בהצלחה! אפשר לחזור לאפליקציה ולהמשיך לעבוד."}
 
 @app.on_event("startup")
 def on_startup():
