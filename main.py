@@ -13,9 +13,12 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 from collections import defaultdict
+from fastapi.responses import RedirectResponse, Response, FileResponse # הוספנו את FileResponse
+
+
 
 load_dotenv()
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+#os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 gemini_api_key = os.environ.get("GEMINI_API_KEY") 
 if not gemini_api_key:
@@ -43,6 +46,11 @@ class Task(SQLModel, table=True):
 
 app = FastAPI(title="Aviv's Smart Time Manager")
 
+@app.get("/")
+def serve_frontend():
+    """מגיש את ממשק המשתמש (HTML) כשנכנסים לכתובת הראשית"""
+    return FileResponse("index.html")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -51,13 +59,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#SCOPES = ['https://www.googleapis.com/auth/calendar']
+#FRONTEND_URL = "http://127.0.0.1:5500/index.html" 
+#oauth_state = {}
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-FRONTEND_URL = "http://127.0.0.1:5500/index.html" 
+RENDER_URL = "https://time-managment-app.onrender.com"
+FRONTEND_URL = f"{RENDER_URL}/" # לכאן גוגל תחזיר אותנו
 oauth_state = {}
 
 @app.get("/login")
 def login_with_google():
-    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, redirect_uri='http://localhost:8000/auth/callback')
+    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, redirect_uri=f'{RENDER_URL}/auth/callback')
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
     oauth_state['state'] = state
     oauth_state['code_verifier'] = getattr(flow, 'code_verifier', None)
@@ -66,7 +78,7 @@ def login_with_google():
 from fastapi import Request
 @app.get("/auth/callback")
 def auth_callback(request: Request):
-    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, state=oauth_state.get('state'), redirect_uri='http://localhost:8000/auth/callback')
+    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, state=oauth_state.get('state'), redirect_uri=f'{RENDER_URL}/auth/callback')
     flow.fetch_token(authorization_response=str(request.url), code_verifier=oauth_state.get('code_verifier'))
     with open('token.json', 'w') as token_file:
         token_file.write(flow.credentials.to_json())
