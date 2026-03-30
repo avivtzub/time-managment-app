@@ -67,44 +67,47 @@ The system will automatically scan your Google Calendar (including external sche
    ```bash
    git clone https://github.com/avivtzub/ai-time-manager.git
    cd ai-time-manager
+   ```
 
-  ###Create and activate a virtual environment:
-  python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use: venv\Scripts\activate
+   ```
 
-###Install dependencies:
-pip install fastapi uvicorn sqlmodel google-generativeai google-auth-oauthlib google-api-python-client python-dotenv
+3. **Install dependencies:**
+   ```bash
+   pip install fastapi uvicorn sqlmodel google-generativeai google-auth-oauthlib google-api-python-client python-dotenv
+   ```
 
-### Environment Variables: Create a .env file in the root directory and add your Gemini API key:
-GEMINI_API_KEY=your_api_key_here
+4. **Environment Variables:**
+   Create a `.env` file in the root directory and add your Gemini API key:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   ```
 
-### Start the server:
-uvicorn main:app --reload
+5. **Start the server:**
+   ```bash
+   uvicorn main:app --reload
+   ```
 
-### Open your browser and navigate to http://localhost:8000/.
+6. Open your browser and navigate to `http://localhost:8000/`.
+7. Click **"Connect with Google Calendar"** to authorize the application.
 
-### Click "Connect with Google Calendar" to authorize the application.
+## 🏗️ Architecture & Data Flow
 
-### 🏗️ Architecture & Data Flow
-Input: User submits a free-text task via the UI.
+1. **Input:** User submits a free-text task via the UI.
+2. **AI Parsing:** FastAPI sends the prompt to Gemini AI, which returns a structured JSON (duration, date, preference, priority, transit time).
+3. **Database:** Task is saved locally in SQLite (`status: new`).
+4. **Algorithm:** The Python backend fetches existing Google Calendar events (including external ones), calculates free blocks, applies time constraints/travel buffers, and updates the task (`status: scheduled`).
+5. **Review:** The frontend displays the proposed schedule in green. The user can drag, stretch, or edit the block.
+6. **Sync:** Upon confirmation, the backend pushes the finalized event to Google Calendar and marks it as `synced`.
 
-AI Parsing: FastAPI sends the prompt to Gemini AI, which returns a structured JSON (duration, date, preference, priority, transit time).
+## 🔒 Security Note
+This application uses local configuration files for API keys and tokens. Ensure that your `.env`, `credentials.json`, `token.json`, and `tasks.db` are added to your `.gitignore` file before pushing to a public repository.
 
-Database: Task is saved locally in SQLite (status: new).
-
-Algorithm: The Python backend fetches existing Google Calendar events (including external ones), calculates free blocks, applies time constraints/travel buffers, and updates the task (status: scheduled).
-
-Review: The frontend displays the proposed schedule in green. The user can drag, stretch, or edit the block.
-
-Sync: Upon confirmation, the backend pushes the finalized event to Google Calendar and marks it as synced.
-
-### Security Note
-This application uses local configuration files for API keys and tokens. Ensure that your .env, credentials.json, token.json, and tasks.db are added to your .gitignore file before pushing to a public repository.
-
+---
 <div align="center">
-<b>Developed by Aviv</b>
-
-
-<a href="https://github.com/avivtzub">GitHub Profile</a>
+  <b>Developed by Aviv</b><br>
+  <a href="[https://github.com/avivtzub](https://github.com/avivtzub)">GitHub Profile</a>
 </div>
-   
