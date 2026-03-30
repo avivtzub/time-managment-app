@@ -161,23 +161,31 @@ def get_calendar_events(session: Session = Depends(get_session)):
             service = build('calendar', 'v3', credentials=creds)
             now = datetime.utcnow().isoformat() + 'Z'
             next_month = (datetime.utcnow() + timedelta(days=30)).isoformat() + 'Z'
-            g_events = service.events().list(calendarId='primary', timeMin=now, timeMax=next_month, singleEvents=True, orderBy='startTime').execute().get('items', [])
-            for ge in g_events:
-                start = ge['start'].get('dateTime', ge['start'].get('date'))
-                end = ge['end'].get('dateTime', ge['end'].get('date'))
-                events.append({"title": ge.get('summary', 'אירוע'), "start": start, "end": end, "color": "#4285F4"})
+            
+            # הקסם החדש: קורא את כל היומנים המחוברים!
+            calendars = service.calendarList().list().execute().get('items', [])
+            for cal in calendars:
+                try:
+                    g_events = service.events().list(calendarId=cal['id'], timeMin=now, timeMax=next_month, singleEvents=True, orderBy='startTime').execute().get('items', [])
+                    for ge in g_events:
+                        start = ge['start'].get('dateTime', ge['start'].get('date'))
+                        end = ge['end'].get('dateTime', ge['end'].get('date'))
+                        # צבע כחול לראשי, אפור ליומנים חיצוניים (כמו אוניברסיטה)
+                        color = "#4285F4" if cal.get('primary') else "#9E9E9E"
+                        events.append({"title": ge.get('summary', 'אירוע'), "start": start, "end": end, "color": color})
+                except: pass
         except: pass
 
     scheduled_tasks = session.exec(select(Task).where(Task.status == "scheduled")).all()
     for t in scheduled_tasks:
         if t.start_time and t.end_time:
             events.append({
-                "id": str(t.id), # מוסיפים מזהה כדי שנדע איזה אירוע הזזת
+                "id": str(t.id),
                 "title": f"🤖 {t.title}", 
                 "start": t.start_time.isoformat(), 
                 "end": t.end_time.isoformat(), 
                 "color": "#10B981",
-                "extendedProps": {"is_proposed": True} # דגל שמזהה שזה אירוע שאפשר לערוך
+                "extendedProps": {"is_proposed": True}
             })
     return events
 
@@ -235,12 +243,24 @@ def schedule_tasks(session: Session = Depends(get_session)):
                 continue
 
         # קריאת יומן גוגל הספציפי ליום הזה
+        # קריאת יומן גוגל - הפעם מכל היומנים כדי לא לדרוס אירועים חיצוניים
         fixed_events = []
         if service:
             time_min = start_of_day.astimezone().isoformat()
             time_max = end_of_day.astimezone().isoformat()
-            g_events = service.events().list(calendarId='primary', timeMin=time_min, timeMax=time_max, singleEvents=True, orderBy='startTime').execute().get('items', [])
-            for ge in g_events:
+            
+            calendars = service.calendarList().list().execute().get('items', [])
+            all_raw_events = []
+            for cal in calendars:
+                try:
+                    g_events = service.events().list(calendarId=cal['id'], timeMin=time_min, timeMax=time_max, singleEvents=True, orderBy='startTime').execute().get('items', [])
+                    all_raw_events.extend(g_events)
+                except: pass
+            
+            # חייבים למיין את כל האירועים מכל היומנים יחד לפי שעת התחלה!
+            all_raw_events.sort(key=lambda x: x['start'].get('dateTime', x['start'].get('date', '')))
+
+            for ge in all_raw_events:
                 start_str, end_str = ge['start'].get('dateTime'), ge['end'].get('dateTime')
                 if start_str and end_str:
                     fixed_events.append({
