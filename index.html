@@ -6,14 +6,7 @@
     <title>מנהל הזמן של אביב</title>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <style>
-        #calendar {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+        #calendar { max-width: 900px; margin: 20px auto; padding: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -29,7 +22,7 @@
         </div>
 
         <div class="mb-8 flex gap-2">
-            <input type="text" id="taskTitle" placeholder="כתוב חופשי (למשל: ללמוד אלגוריתמים מחר)" 
+            <input type="text" id="taskTitle" placeholder="למשל: ללמוד למבחן ביום חמישי בבוקר בספרייה" 
                    class="border border-gray-300 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             <button onclick="addTask()" 
                     class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-700 transition min-w-[80px]">
@@ -38,6 +31,27 @@
         </div>
 
         <div id='calendar'></div>
+        <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full" dir="rtl">
+                <h3 class="text-xl font-bold mb-4 text-indigo-600" id="modalTitle">ערוך שיבוץ 🎯</h3>
+                <input type="hidden" id="modalEventId">
+                <div class="mb-3">
+                    <label class="block text-sm text-gray-600 mb-1 font-medium">התחלה:</label>
+                    <input type="datetime-local" id="modalStart" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="mb-5">
+                    <label class="block text-sm text-gray-600 mb-1 font-medium">סיום:</label>
+                    <input type="datetime-local" id="modalEnd" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="flex justify-between items-center">
+                    <button onclick="deleteFromModal()" class="text-red-500 hover:text-red-700 font-medium px-2">🗑️ מחק מהלו"ז</button>
+                    <div class="flex gap-2">
+                        <button onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">בטל</button>
+                        <button onclick="saveFromModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">שמור שינויים</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <h2 class="text-lg font-semibold text-gray-700 mt-8 mb-4">משימות שממתינות לשיבוץ:</h2>
         <div id="tasksList" class="space-y-3 mb-6">
@@ -51,20 +65,16 @@
             </button>
             <button onclick="confirmSync()" 
                     class="w-1/2 bg-green-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-green-600 transition shadow-md flex justify-center items-center gap-2">
-                <span>✅</span> נראה טוב, סנכרן!
+                <span>✅</span> סנכרן לגוגל
             </button>
         </div>
+    </div>
 
     <script>
-        // שינוי קריטי: הכל עכשיו פונה לשרת המקומי שלנו!
         const API_URL = "http://localhost:8000";
 
-        // פונקציית ההתחברות 
-        function loginToGoogle() {
-            window.location.href = `${API_URL}/login`;
-        }
+        function loginToGoogle() { window.location.href = `${API_URL}/login`; }
 
-        // שליפת המשימות ממסד הנתונים
         async function fetchTasks() {
             try {
                 const response = await fetch(`${API_URL}/tasks`);
@@ -81,125 +91,201 @@
                 tasks.forEach(task => {
                     const taskDiv = document.createElement('div');
                     taskDiv.className = "p-4 bg-gray-50 border border-gray-100 rounded-xl flex justify-between items-center shadow-sm";
+                    
+                    // תרגום יפה של הזמן המועדף
+                    let prefTimeHeb = 'לא משנה';
+                    if (task.preferred_time === 'Morning') prefTimeHeb = 'בוקר';
+                    if (task.preferred_time === 'Afternoon') prefTimeHeb = 'צהריים';
+                    if (task.preferred_time === 'Evening') prefTimeHeb = 'ערב';
+
+                    // הלוגיקה החדשה של התאריכים!
+                    let dateDisplay = '';
+                    if (task.target_date) {
+                        dateDisplay = task.target_date; // יש תאריך
+                    } else if (task.priority === 1) {
+                        dateDisplay = 'היום בהקדם 🚨'; // דחוף
+                    } else {
+                        dateDisplay = 'בזמן הקרוב 📅'; // רגיל/פנאי
+                    }
+
                     taskDiv.innerHTML = `
-                        <div>
+                        <div class="flex-1">
                             <h3 class="font-medium text-gray-800">${task.title}</h3>
                             <p class="text-xs text-gray-500 mt-1">
-                                ⚡ אנרגיה: ${task.energy_level} | ⏱️ זמן: ${task.duration_minutes} דק'
+                                📅 מתי: <b>${dateDisplay}</b> | ⏰ מועדף: <b>${prefTimeHeb}</b> | ⏱️ ${task.duration_minutes} דק'
                             </p>
                             <p class="text-xs text-indigo-500 mt-1 font-medium">
                                 📍 ${task.location_context !== 'Anywhere' ? task.location_context + " (" + task.estimated_transit_minutes + " דק' נסיעה)" : 'בכל מקום'}
                             </p>
                         </div>
+                        <button onclick="deleteTask(${task.id})" class="text-red-400 hover:text-red-600 p-2 text-xl" title="מחק משימה">
+                            🗑️
+                        </button>
                     `;
                     listElement.appendChild(taskDiv);
                 });
-            } catch (error) {
-                console.error("שגיאה בשליפת המשימות:", error);
-                document.getElementById('tasksList').innerHTML = '<p class="text-red-500 text-center text-sm">שגיאה בחיבור לשרת המקומי.</p>';
-            }
+            } catch (error) { console.error(error); }
         }
 
-        // הוספת משימה בעזרת ג'מיני
+        // פונקציית המחיקה החדשה!
+        async function deleteTask(taskId) {
+            if (!confirm("למחוק את המשימה?")) return;
+            try {
+                await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE' });
+                fetchTasks(); // מרענן את הרשימה
+            } catch (error) { console.error(error); }
+        }
+
         async function addTask() {
             const titleInput = document.getElementById('taskTitle');
             const freeText = titleInput.value;
             if (!freeText) return; 
 
-            // פונה לכפתור ההוספה הספציפי 
             const btn = document.querySelector('button[onclick="addTask()"]');
             const originalBtnText = btn.innerHTML;
-            btn.innerHTML = '🤖...';
-            btn.disabled = true;
+            btn.innerHTML = '🤖...'; btn.disabled = true;
 
             try {
-                const response = await fetch(`${API_URL}/smart_add_task`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                await fetch(`${API_URL}/smart_add_task`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: freeText })
                 });
-                
-                if (response.ok) {
-                    titleInput.value = ''; 
-                    fetchTasks(); // מרענן את הרשימה
-                } else {
-                    alert('הייתה בעיה בניתוח המשימה מול השרת.');
-                }
-            } catch (error) {
-                console.error("שגיאה בהוספת משימה:", error);
-            } finally {
-                btn.innerHTML = originalBtnText;
-                btn.disabled = false;
-            }
+                titleInput.value = ''; 
+                fetchTasks(); 
+            } catch (error) { console.error(error); } 
+            finally { btn.innerHTML = originalBtnText; btn.disabled = false; }
         }
 
-        // פונקציה 1: רק מריצה את האלגוריתם ומציירת את זה על המסך (בצבע ירוק)
         async function proposeSchedule() {
             const btn = document.querySelector('button[onclick="proposeSchedule()"]');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ חושב...';
-            btn.disabled = true;
-
+            btn.innerHTML = '⏳ חושב...'; btn.disabled = true;
             try {
-                const res = await fetch(`${API_URL}/schedule_tasks`, { method: 'POST' });
-                const data = await res.json();
-                
-                // מרעננים את היומן הויזואלי כדי לראות את ההצעות
+                await fetch(`${API_URL}/schedule_tasks`, { method: 'POST' });
                 window.myCalendar.refetchEvents();
-                fetchTasks(); // מעדכן את הרשימה למטה
-                
-                alert("המשימות שובצו ביומן (הן מופיעות בצבע ירוק!).\nעבור ליום של מחר ביומן כדי לראות אותן.\nאם זה מתאים לך - לחץ על סנכרון.");
-            } catch (error) {
-                console.error(error);
-                alert("שגיאה בשיבוץ מול השרת.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+                fetchTasks(); 
+                alert("המשימות שובצו! עיין ביומן (גם בימים קדימה) כדי לראות את ההצעות הירוקות.");
+            } catch (error) { console.error(error); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
         }
 
-        // פונקציה 2: לוקחת את מה שמוצג ירוק, ויורה לגוגל (יהפוך לכחול)
         async function confirmSync() {
             const btn = document.querySelector('button[onclick="confirmSync()"]');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ מסנכרן לגוגל...';
-            btn.disabled = true;
-
+            btn.innerHTML = '⏳ מסנכרן...'; btn.disabled = true;
             try {
                 const res = await fetch(`${API_URL}/sync_to_google`, { method: 'POST' });
                 const data = await res.json();
-                
                 alert(data.message);
-                // מרענן שוב - עכשיו זה יישאב ישירות מגוגל ויוצג בכחול הרשמי
                 window.myCalendar.refetchEvents(); 
-                
-            } catch (error) {
-                console.error(error);
-                alert("שגיאה בסנכרון לגוגל.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+            } catch (error) { console.error(error); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+
+        // -----------------------------------------------------
+        // פונקציות העריכה החדשות! (גרירה + הזנה ידנית)
+        // -----------------------------------------------------
+        
+        // -----------------------------------------------------
+        // פונקציית עזר לביטול קפיצת אזורי הזמן (שולחת זמן ישראלי נקי)
+        // -----------------------------------------------------
+        function toLocalISOString(date) {
+            const tzOffset = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() - tzOffset).toISOString().slice(0, 19);
+        }
+
+        // 1. תיקון פונקציית הגרירה
+        async function updateEventTimeOnServer(event) {
+            try {
+                await fetch(`${API_URL}/tasks/${event.id}/time`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        start_time: toLocalISOString(event.start), 
+                        end_time: toLocalISOString(event.end) 
+                    })
+                });
+            } catch (error) { console.error("שגיאה בעדכון הזמנים:", error); }
+        }
+
+        // פתיחת חלון העריכה המדויק
+        function openEditModal(event) {
+            document.getElementById('modalEventId').value = event.id;
+            document.getElementById('modalTitle').innerText = event.title;
+            
+            // המרת הזמן לפורמט שה-Input הישראלי מבין
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            const startLocal = new Date(event.start - tzOffset).toISOString().slice(0, 16);
+            const endLocal = new Date(event.end - tzOffset).toISOString().slice(0, 16);
+            
+            document.getElementById('modalStart').value = startLocal;
+            document.getElementById('modalEnd').value = endLocal;
+            
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // 2. תיקון פונקציית חלון העריכה הידני
+        async function saveFromModal() {
+            const taskId = document.getElementById('modalEventId').value;
+            
+            // לוקחים את הזמן מהחלון בדיוק כפי שהמשתמש הקליד אותו, ומוסיפים לו ":00" לשניות
+            const startStr = document.getElementById('modalStart').value + ":00";
+            const endStr = document.getElementById('modalEnd').value + ":00";
+            
+            try {
+                await fetch(`${API_URL}/tasks/${taskId}/time`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start_time: startStr, end_time: endStr })
+                });
+                closeModal();
+                window.myCalendar.refetchEvents(); // מרענן יומן
+            } catch (error) { console.error("שגיאה:", error); }
+        }
+
+        // מחיקה מתוך החלון 
+        async function deleteFromModal() {
+            const taskId = document.getElementById('modalEventId').value;
+            if (confirm("בטוח שאתה רוצה לבטל את המשימה הזו?")) {
+                await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE' });
+                closeModal();
+                window.myCalendar.refetchEvents();
             }
         }
 
-        // הקמת היומן ושליפת המשימות כשהדף עולה
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'timeGridWeek',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                direction: 'rtl', height: 'auto',
+                events: `${API_URL}/api/calendar/events`,
+                
+                // --- היכולות החדשות! ---
+                editable: true, // מאפשר גרירה ומתיחה!
+                eventDrop: function(info) {
+                    if (info.event.extendedProps.is_proposed) {
+                        updateEventTimeOnServer(info.event); // אם נגרר, מעדכן שרת
+                    } else {
+                        info.revert(); // חוסם גרירה של אירועי גוגל מקוריים (הם קשיחים)
+                        alert("אי אפשר להזיז אירועים קשיחים של גוגל מכאן.");
+                    }
                 },
-                direction: 'rtl',
-                height: 'auto',
-                events: `${API_URL}/api/calendar/events`
+                eventResize: function(info) {
+                    if (info.event.extendedProps.is_proposed) updateEventTimeOnServer(info.event);
+                },
+                eventClick: function(info) {
+                    if (info.event.extendedProps.is_proposed) {
+                        openEditModal(info.event); // פותח את חלון העריכה בלחיצה
+                    }
+                }
             });
             calendar.render();
             window.myCalendar = calendar; 
-            
-            // טוען את המשימות למטה
             fetchTasks();
         });
     </script>

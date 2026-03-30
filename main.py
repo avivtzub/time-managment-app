@@ -2,33 +2,26 @@ import os
 import json
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import Request
 from fastapi.responses import RedirectResponse, Response
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import google.generativeai as genai
 from pydantic import BaseModel
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
-from fastapi import Request
-import traceback
+from collections import defaultdict
 
-# משתנה גלובלי ששומר את לחיצת היד הסודית של גוגל בין שני המסכים
-oauth_state = {}
-# טעינת משתני סביבה (לוקאלי)
 load_dotenv()
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# 1. הגדרת המפתח של ה-AI
 gemini_api_key = os.environ.get("GEMINI_API_KEY") 
 if not gemini_api_key:
     raise ValueError("No GEMINI_API_KEY set for application")
-
 genai.configure(api_key=gemini_api_key)
 
-# 2. הגדרת מסד הנתונים
 sqlite_file_name = "tasks.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
@@ -37,21 +30,17 @@ class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     energy_level: int
-    can_be_parallel: bool = False
-    is_container: bool = False
-    deadline: Optional[datetime] = None
-    status: str = "new" # מצבים: new, scheduled, synced
-    parent_id: Optional[int] = Field(default=None)
-    is_fixed_event: bool = False # שומרים את השדה שלא יקרוס מסד הנתונים הישן
+    status: str = "new" 
     start_time: Optional[datetime] = None 
     end_time: Optional[datetime] = None   
     duration_minutes: Optional[int] = 30  
     priority: int = 2          
-    requires_travel: bool = False
     location_context: str = "Anywhere" 
     estimated_transit_minutes: int = 0
+    # שני השדות החדשים שהוספנו!
+    target_date: Optional[str] = None # פורמט YYYY-MM-DD
+    preferred_time: str = "Any" # Morning, Afternoon, Evening, Any
 
-# 3. יצירת השרת
 app = FastAPI(title="Aviv's Smart Time Manager")
 
 app.add_middleware(
@@ -62,75 +51,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------
-# Google Auth - אימות מול גוגל
-# ---------------------------------------------------------
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-# שנה את הפורט פה אם ה-Live Server שלך רץ על מספר אחר (למשל 3000)
 FRONTEND_URL = "http://127.0.0.1:5500/index.html" 
+oauth_state = {}
 
 @app.get("/login")
 def login_with_google():
-    """הפונקציה שזורקת אותך למסך ההתחברות של גוגל"""
-    flow = Flow.from_client_secrets_file(
-        'credentials.json',
-        scopes=SCOPES,
-        redirect_uri='http://localhost:8000/auth/callback'
-    )
-    
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent'  # <--- זו מילת הקסם שהוספנו! מכריחה את גוגל לתת מפתח חדש
-    )
-    
-    # שומרים בזיכרון את המפתחות שגוגל הולכת לבקש מאיתנו בחזור!
+    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, redirect_uri='http://localhost:8000/auth/callback')
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
     oauth_state['state'] = state
     oauth_state['code_verifier'] = getattr(flow, 'code_verifier', None)
-    
     return RedirectResponse(url=authorization_url)
 
+from fastapi import Request
 @app.get("/auth/callback")
 def auth_callback(request: Request):
-    """הדלת שגוגל מחזירה אליה - עכשיו עם זיכרון פיל!"""
-    try:
-        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-        
-        # אנחנו מקימים את הקשר מחדש, ונותנים לו את ה-state מהזיכרון
-        flow = Flow.from_client_secrets_file(
-            'credentials.json',
-            scopes=SCOPES,
-            state=oauth_state.get('state'),
-            redirect_uri='http://localhost:8000/auth/callback'
-        )
-        
-        # שולפים את ה-verifier מהזיכרון ומגישים לגוגל עם הכתובת
-        flow.fetch_token(
-            authorization_response=str(request.url),
-            code_verifier=oauth_state.get('code_verifier')
-        )
-        
-        with open('token.json', 'w') as token_file:
-            token_file.write(flow.credentials.to_json())
-            
-        return RedirectResponse(url=FRONTEND_URL)
-        
-    except Exception as e:
-        import traceback
-        return {
-            "CRASH_REPORT": "השרת קרס, הנה הסיבה האמיתית:",
-            "error_message": str(e),
-            "traceback": traceback.format_exc()
-        }
-        
-    except Exception as e:
-        # תפסנו את השגיאה! עכשיו נראה אותה ישר בדפדפן במקום מסך שחור
-        return {
-            "CRASH_REPORT": "השרת קרס, הנה הסיבה האמיתית:",
-            "error_message": str(e),
-            "traceback": traceback.format_exc()
-        }
-    
+    flow = Flow.from_client_secrets_file('credentials.json', scopes=SCOPES, state=oauth_state.get('state'), redirect_uri='http://localhost:8000/auth/callback')
+    flow.fetch_token(authorization_response=str(request.url), code_verifier=oauth_state.get('code_verifier'))
+    with open('token.json', 'w') as token_file:
+        token_file.write(flow.credentials.to_json())
+    return RedirectResponse(url=FRONTEND_URL)
 
 @app.on_event("startup")
 def on_startup():
@@ -140,34 +80,39 @@ def get_session():
     with Session(engine) as session:
         yield session
 
-# ---------------------------------------------------------
-# APIs למשימות חכמות ומידע ליומן
-# ---------------------------------------------------------
-
 @app.get("/tasks", response_model=List[Task])
 def get_tasks(session: Session = Depends(get_session)):
-    # מציג רק משימות שעוד לא שובצו או סונכרנו לגוגל
     return session.exec(select(Task).where(Task.status == "new")).all()
+
+# מחיקת משימה
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if task:
+        session.delete(task)
+        session.commit()
+    return {"message": "המשימה נמחקה."}
 
 class SmartTaskRequest(BaseModel):
     text: str
 
 @app.post("/smart_add_task")
 def smart_add_task(request: SmartTaskRequest, session: Session = Depends(get_session)):
+    today_str = date.today().isoformat()
+    day_name = date.today().strftime("%A")
+    
     prompt = f"""
-    אתה מנהל זמן אישי חכם. המשתמש יזרוק לך משפט חופשי. עליך לחלץ את המשימה ולהחזיר *רק* מבנה JSON תקין.
-    חוקי מיקומים (קריטי!):
-    - המילה "אוניברסיטה" או "קמפוס" -> "אוניברסיטת תל אביב"
-    - המילה "דירה" -> "חובבי ציון 37 תל אביב"
-    - המילה "בית" או "הורים" -> "בילו 39 רעננה"
-    אם אין מיקום ספציפי שמשתמע מהבקשה, ה-location_context יהיה "Anywhere".
+    אתה מנהל זמן אישי חכם. היום הוא {day_name}, התאריך: {today_str}.
+    חלץ את המשימה מהמשפט החופשי והחזר *רק* JSON תקין.
 
-    חוקים נוספים:
-    - energy_level: 1 (ריכוז), 2 (בינוני), 3 (קליל).
-    - duration_minutes: הערכת זמן ביצוע בדקות.
-    - priority: 1 (דחוף), 2 (רגיל), 3 (פנאי).
-    - requires_travel: true אם המשימה מצריכה יציאה למקום ספציפי.
-    - estimated_transit_minutes: דקות נסיעה ממוצעת למיקום הזה ביום יום.
+    חוקי זמנים (חדש!):
+    - target_date: תאריך היעד בפורמט YYYY-MM-DD. חשב אותו לפי היום ({today_str}). אם המשתמש אומר "מחר", הוסף יום. אם אומר "ביום חמישי", חשב מה התאריך של יום חמישי הקרוב. אם לא ציין מתי, החזר null.
+    - preferred_time: חלץ את הזמן המועדף. "Morning" (08-12), "Afternoon" (12-17), "Evening" (17-22). אם לא צוין, החזר "Any".
+
+    חוקי מיקומים: "אוניברסיטה" -> "אוניברסיטת תל אביב", "דירה" -> "חובבי ציון 37 תל אביב", "בית" -> "בילו 39 רעננה". אחרת "Anywhere".
+    - duration_minutes: הערכת זמן ביצוע.
+    - requires_travel: true אם יוצאים למקום.
+    - estimated_transit_minutes: דקות נסיעה ממוצעת ביום יום.
 
     החזר בדיוק את המבנה הזה:
     {{
@@ -175,9 +120,10 @@ def smart_add_task(request: SmartTaskRequest, session: Session = Depends(get_ses
         "energy_level": 1,
         "duration_minutes": 60,
         "priority": 2,
-        "requires_travel": true,
-        "location_context": "אוניברסיטת תל אביב",
-        "estimated_transit_minutes": 45
+        "target_date": "2026-04-02",
+        "preferred_time": "Morning",
+        "location_context": "Anywhere",
+        "estimated_transit_minutes": 0
     }}
     המשפט של המשתמש: "{request.text}"
     """
@@ -192,165 +138,185 @@ def smart_add_task(request: SmartTaskRequest, session: Session = Depends(get_ses
         session.commit()
         return {"message": "ה-AI פענח את המשימה בהצלחה!"}
     except Exception as e:
-        return {"error": "הייתה בעיה בפענוח המשימה", "details": str(e)}
+        return {"error": str(e)}
 
 @app.get("/api/calendar/events")
 def get_calendar_events(session: Session = Depends(get_session)):
-    """מושך אירועים מגוגל + משימות ששובצו, ושולח לתצוגה ב-HTML"""
     events = []
-    
-    # 1. מושכים מגוגל (כחול)
     if os.path.exists('token.json'):
         try:
             creds = Credentials.from_authorized_user_file('token.json', SCOPES)
             service = build('calendar', 'v3', credentials=creds)
             now = datetime.utcnow().isoformat() + 'Z'
             next_month = (datetime.utcnow() + timedelta(days=30)).isoformat() + 'Z'
-            
-            g_events = service.events().list(
-                calendarId='primary', timeMin=now, timeMax=next_month,
-                singleEvents=True, orderBy='startTime').execute().get('items', [])
-            
+            g_events = service.events().list(calendarId='primary', timeMin=now, timeMax=next_month, singleEvents=True, orderBy='startTime').execute().get('items', [])
             for ge in g_events:
                 start = ge['start'].get('dateTime', ge['start'].get('date'))
                 end = ge['end'].get('dateTime', ge['end'].get('date'))
-                events.append({
-                    "title": ge.get('summary', 'אירוע'),
-                    "start": start,
-                    "end": end,
-                    "color": "#4285F4" 
-                })
-        except Exception as e:
-            print("Error reading Google Calendar:", e)
+                events.append({"title": ge.get('summary', 'אירוע'), "start": start, "end": end, "color": "#4285F4"})
+        except: pass
 
-    # 2. מושכים את השיבוצים שלנו שעוד לא סונכרנו (ירוק)
     scheduled_tasks = session.exec(select(Task).where(Task.status == "scheduled")).all()
     for t in scheduled_tasks:
         if t.start_time and t.end_time:
             events.append({
-                "title": f"🤖 {t.title}",
-                "start": t.start_time.isoformat(),
-                "end": t.end_time.isoformat(),
-                "color": "#10B981" 
+                "id": str(t.id), # מוסיפים מזהה כדי שנדע איזה אירוע הזזת
+                "title": f"🤖 {t.title}", 
+                "start": t.start_time.isoformat(), 
+                "end": t.end_time.isoformat(), 
+                "color": "#10B981",
+                "extendedProps": {"is_proposed": True} # דגל שמזהה שזה אירוע שאפשר לערוך
             })
-
     return events
-
-# ---------------------------------------------------------
-# אלגוריתם השיבוץ החכם וסנכרון לגוגל
-# ---------------------------------------------------------
 
 @app.post("/schedule_tasks")
 def schedule_tasks(session: Session = Depends(get_session)):
-    """קורא מגוגל את המצב למחר, ומשבץ את המשימות החדשות בחורים"""
-    
-    # איפוס משימות ששובצו אך לא סונכרנו
     previously_scheduled = session.exec(select(Task).where(Task.status == "scheduled")).all()
     for t in previously_scheduled:
         t.status = "new"
-        t.start_time = None
-        t.end_time = None
+        t.start_time, t.end_time = None, None
         session.add(t)
     session.commit()
 
-    tomorrow = datetime.now() + timedelta(days=1)
-    start_of_day = tomorrow.replace(hour=8, minute=0, second=0, microsecond=0)
-    end_of_day = tomorrow.replace(hour=22, minute=0, second=0, microsecond=0)
-
-    # 1. שליפת אירועים קשיחים ישירות מ-Google Calendar!
-    fixed_events = []
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-        service = build('calendar', 'v3', credentials=creds)
-        time_min = start_of_day.astimezone().isoformat()
-        time_max = end_of_day.astimezone().isoformat()
-        
-        g_events = service.events().list(
-            calendarId='primary', timeMin=time_min, timeMax=time_max,
-            singleEvents=True, orderBy='startTime').execute().get('items', [])
-            
-        for ge in g_events:
-            start_str = ge['start'].get('dateTime')
-            end_str = ge['end'].get('dateTime')
-            if start_str and end_str:
-                # המרת התאריך של גוגל לפייתון רגיל
-                start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00')).replace(tzinfo=None)
-                end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00')).replace(tzinfo=None)
-                loc = ge.get('location', 'Anywhere')
-                fixed_events.append({"start": start_dt, "end": end_dt, "location": loc})
-
-    # 2. חישוב חללים לבנים מודע-מיקום
-    free_blocks = []
-    current_time = start_of_day
-    current_location = "חובבי ציון 37 תל אביב" 
-
-    for event in fixed_events:
-        block_end = event["start"] - timedelta(minutes=15)
-        if current_time < block_end:
-            free_blocks.append({"start": current_time, "end": block_end, "location": current_location})
-        current_time = max(current_time, event["end"])
-        current_location = event["location"]
-
-    if current_time < end_of_day:
-        free_blocks.append({"start": current_time, "end": end_of_day, "location": current_location})
-
-    # 3. שיבוץ המשימות הפתוחות
     pending_tasks = session.exec(select(Task).where(Task.status == "new").order_by(Task.priority)).all()
-    scheduled_count = 0
-
-    for task in pending_tasks:
-        task_duration = timedelta(minutes=task.duration_minutes)
-        for block in free_blocks:
-            transit_mins = 0
-            if task.location_context != "Anywhere" and block["location"] != "Anywhere" and task.location_context != block["location"]:
-                transit_mins = task.estimated_transit_minutes
-                
-            transit_time = timedelta(minutes=transit_mins)
-            total_required = task_duration + transit_time
-            block_duration = block["end"] - block["start"]
+    
+    # מיון משימות לפי תאריכים
+    # מיון משימות לפי תאריכים
+    tasks_by_date = defaultdict(list)
+    # מיון משימות לפי תאריכים והיגיון דחיפות
+    tasks_by_date = defaultdict(list)
+    for t in pending_tasks:
+        if t.target_date:
+            # 1. יש תאריך מוגדר מראש
+            date_str = t.target_date 
+        elif t.priority == 1:
+            # 2. אין תאריך אבל זה דחוף (Priority 1) -> משבצים להיום
+            date_str = datetime.now().strftime("%Y-%m-%d")
+        else:
+            # 3. אין תאריך ולא דחוף -> "בזמן הקרוב" (נתחיל לחפש ממחר)
+            date_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
             
-            if block_duration >= total_required:
-                task.start_time = block["start"] + transit_time
-                task.end_time = task.start_time + task_duration
-                task.status = "scheduled"
-                session.add(task)
-                scheduled_count += 1
+        tasks_by_date[date_str].append(t)
+    scheduled_count = 0
+    creds = Credentials.from_authorized_user_file('token.json', SCOPES) if os.path.exists('token.json') else None
+    service = build('calendar', 'v3', credentials=creds) if creds else None
+
+    # ריצה על כל יום בנפרד
+    for date_str, tasks in tasks_by_date.items():
+        try:
+            target_date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        except:
+            target_date_obj = datetime.now()
+
+        # הגדרת שעות פעילות רגילות
+        start_of_day = target_date_obj.replace(hour=8, minute=0, second=0, microsecond=0)
+        end_of_day = target_date_obj.replace(hour=22, minute=0, second=0, microsecond=0)
+
+        # הקסם החדש: אם אנחנו משבצים משימות להיום, נקודת ההתחלה היא עכשיו (+10 דקות באפר)
+        if target_date_obj.date() == datetime.now().date():
+            now_plus_buffer = datetime.now() + timedelta(minutes=10)
+            # לוקחים את המאוחר מבין השניים: 8 בבוקר, או עכשיו
+            start_of_day = max(start_of_day, now_plus_buffer)
+            
+            # אם כבר עברנו את 22:00 בלילה, אין טעם לשבץ היום, נדלג
+            if start_of_day >= end_of_day:
+                continue
+
+        # קריאת יומן גוגל הספציפי ליום הזה
+        fixed_events = []
+        if service:
+            time_min = start_of_day.astimezone().isoformat()
+            time_max = end_of_day.astimezone().isoformat()
+            g_events = service.events().list(calendarId='primary', timeMin=time_min, timeMax=time_max, singleEvents=True, orderBy='startTime').execute().get('items', [])
+            for ge in g_events:
+                start_str, end_str = ge['start'].get('dateTime'), ge['end'].get('dateTime')
+                if start_str and end_str:
+                    fixed_events.append({
+                        "start": datetime.fromisoformat(start_str.replace('Z', '+00:00')).replace(tzinfo=None),
+                        "end": datetime.fromisoformat(end_str.replace('Z', '+00:00')).replace(tzinfo=None),
+                        "location": ge.get('location', 'Anywhere')
+                    })
+
+        # יצירת חורים פנויים
+        free_blocks = []
+        current_time, current_location = start_of_day, "חובבי ציון 37 תל אביב"
+        for event in fixed_events:
+            block_end = event["start"] - timedelta(minutes=15)
+            if current_time < block_end:
+                free_blocks.append({"start": current_time, "end": block_end, "location": current_location})
+            current_time, current_location = max(current_time, event["end"]), event["location"]
+        if current_time < end_of_day:
+            free_blocks.append({"start": current_time, "end": end_of_day, "location": current_location})
+
+        # שיבוץ לפי זמנים מועדפים
+        for task in tasks:
+            task_duration = timedelta(minutes=task.duration_minutes)
+            
+            # חיתוך החורים הפנויים לפי בוקר/צהריים/ערב
+            valid_blocks = []
+            for b in free_blocks:
+                pref_start, pref_end = start_of_day, end_of_day
+                if task.preferred_time == "Morning": pref_end = start_of_day.replace(hour=12)
+                elif task.preferred_time == "Afternoon": pref_start, pref_end = start_of_day.replace(hour=12), start_of_day.replace(hour=17)
+                elif task.preferred_time == "Evening": pref_start = start_of_day.replace(hour=17)
                 
-                block["start"] = task.end_time
-                if task.location_context != "Anywhere":
-                    block["location"] = task.location_context
-                break 
+                overlap_start, overlap_end = max(b["start"], pref_start), min(b["end"], pref_end)
+                if overlap_start < overlap_end:
+                    valid_blocks.append({"start": overlap_start, "end": overlap_end, "location": b["location"], "original": b})
+
+            for vb in valid_blocks:
+                transit_mins = task.estimated_transit_minutes if task.location_context != "Anywhere" and vb["location"] != "Anywhere" and task.location_context != vb["location"] else 0
+                total_required = task_duration + timedelta(minutes=transit_mins)
+                
+                if (vb["end"] - vb["start"]) >= total_required:
+                    task.start_time = vb["start"] + timedelta(minutes=transit_mins)
+                    task.end_time = task.start_time + task_duration
+                    task.status = "scheduled"
+                    session.add(task)
+                    scheduled_count += 1
+                    vb["original"]["start"] = task.end_time # מעדכן את החור המקורי שלא נדרוס
+                    if task.location_context != "Anywhere": vb["original"]["location"] = task.location_context
+                    break 
 
     session.commit()
     return {"message": f"שובצו {scheduled_count} משימות בהצלחה!"}
 
 @app.post("/sync_to_google")
 def sync_to_google(session: Session = Depends(get_session)):
-    """לוקח את כל המשימות ששובצו ויורה אותן ליומן גוגל האמיתי"""
-    if not os.path.exists('token.json'):
-        return {"error": "לא מחובר לגוגל. התחבר קודם."}
-        
+    if not os.path.exists('token.json'): return {"error": "לא מחובר"}
     creds = Credentials.from_authorized_user_file('token.json', SCOPES)
     service = build('calendar', 'v3', credentials=creds)
-
     tasks_to_sync = session.exec(select(Task).where(Task.status == "scheduled")).all()
     synced_count = 0
-    
     for task in tasks_to_sync:
         event = {
             'summary': f"🤖 {task.title}",
             'location': task.location_context if task.location_context != 'Anywhere' else '',
-            'description': f"שובץ על ידי מנהל הזמן החכם.\nזמן נסיעה משוער: {task.estimated_transit_minutes} דקות.",
+            'description': f"מועדף: {task.preferred_time}\nזמן נסיעה: {task.estimated_transit_minutes} דק'",
             'start': {'dateTime': task.start_time.isoformat(), 'timeZone': 'Asia/Jerusalem'},
             'end': {'dateTime': task.end_time.isoformat(), 'timeZone': 'Asia/Jerusalem'},
         }
-        
         service.events().insert(calendarId='primary', body=event).execute()
-        
-        # מעדכנים סטטוס כדי שלא ישובץ שוב פעמיים
         task.status = "synced"
         session.add(task)
         synced_count += 1
-        
     session.commit()
-    return {"message": f"סונכרנו {synced_count} משימות ליומן גוגל בהצלחה!"}
+    return {"message": f"סונכרנו {synced_count} משימות ליומן גוגל!"}
+# --- נקודות קצה חדשות לעריכה ידנית מהיומן ---
+class UpdateTaskTimeRequest(BaseModel):
+    start_time: str
+    end_time: str
+
+@app.put("/tasks/{task_id}/time")
+def update_task_time(task_id: int, req: UpdateTaskTimeRequest, session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        return {"error": "לא נמצאה משימה"}
+    
+    # המרה מהפורמט של הדפדפן לפורמט של פייתון
+    task.start_time = datetime.fromisoformat(req.start_time.replace('Z', '+00:00')).replace(tzinfo=None)
+    task.end_time = datetime.fromisoformat(req.end_time.replace('Z', '+00:00')).replace(tzinfo=None)
+    
+    session.add(task)
+    session.commit()
+    return {"message": "הזמנים עודכנו בהצלחה"}
