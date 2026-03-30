@@ -44,11 +44,16 @@
             <p class="text-gray-400 text-center text-sm">טוען משימות...</p>
         </div>
 
-        <button onclick="syncToGoogle()" 
-                class="w-full mt-2 bg-green-500 text-white px-5 py-3 rounded-xl font-medium hover:bg-green-600 transition flex justify-center items-center gap-2 shadow-md">
-            <span>✅</span> אשר שיבוץ וסנכרן לגוגל
-        </button>
-    </div>
+        <div class="flex gap-3 mt-4">
+            <button onclick="proposeSchedule()" 
+                    class="w-1/2 bg-indigo-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-indigo-600 transition shadow-md flex justify-center items-center gap-2">
+                <span>🎯</span> הצע שיבוץ ביומן
+            </button>
+            <button onclick="confirmSync()" 
+                    class="w-1/2 bg-green-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-green-600 transition shadow-md flex justify-center items-center gap-2">
+                <span>✅</span> נראה טוב, סנכרן!
+            </button>
+        </div>
 
     <script>
         // שינוי קריטי: הכל עכשיו פונה לשרת המקומי שלנו!
@@ -128,32 +133,49 @@
             }
         }
 
-        // השלב הבא שנעשה: הזרקת הנתונים לגוגל
-        // השלב הסופי: שיבוץ חכם והזרקה לגוגל
-        async function syncToGoogle() {
-            const btn = document.querySelector('button[onclick="syncToGoogle()"]');
+        // פונקציה 1: רק מריצה את האלגוריתם ומציירת את זה על המסך (בצבע ירוק)
+        async function proposeSchedule() {
+            const btn = document.querySelector('button[onclick="proposeSchedule()"]');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ מסנכרן עם גוגל...';
+            btn.innerHTML = '⏳ חושב...';
             btn.disabled = true;
 
             try {
-                // 1. מריצים את אלגוריתם השיבוץ (שמוצא חורים ומחשב זמני נסיעה)
-                const scheduleRes = await fetch(`${API_URL}/schedule_tasks`, { method: 'POST' });
-                const scheduleData = await scheduleRes.json();
-                console.log("תוצאות שיבוץ:", scheduleData);
-
-                // 2. שולחים את מה ששובץ לתוך Google Calendar
-                const syncRes = await fetch(`${API_URL}/sync_to_google`, { method: 'POST' });
-                const syncData = await syncRes.json();
+                const res = await fetch(`${API_URL}/schedule_tasks`, { method: 'POST' });
+                const data = await res.json();
                 
-                // 3. מרעננים את המסך כדי לראות את התוצאות
-                alert(syncData.message);
-                window.myCalendar.refetchEvents(); // מרענן את היומן הויזואלי
-                fetchTasks(); // מנקה את רשימת המשימות הממתינות
+                // מרעננים את היומן הויזואלי כדי לראות את ההצעות
+                window.myCalendar.refetchEvents();
+                fetchTasks(); // מעדכן את הרשימה למטה
+                
+                alert("המשימות שובצו ביומן (הן מופיעות בצבע ירוק!).\nעבור ליום של מחר ביומן כדי לראות אותן.\nאם זה מתאים לך - לחץ על סנכרון.");
+            } catch (error) {
+                console.error(error);
+                alert("שגיאה בשיבוץ מול השרת.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // פונקציה 2: לוקחת את מה שמוצג ירוק, ויורה לגוגל (יהפוך לכחול)
+        async function confirmSync() {
+            const btn = document.querySelector('button[onclick="confirmSync()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ מסנכרן לגוגל...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/sync_to_google`, { method: 'POST' });
+                const data = await res.json();
+                
+                alert(data.message);
+                // מרענן שוב - עכשיו זה יישאב ישירות מגוגל ויוצג בכחול הרשמי
+                window.myCalendar.refetchEvents(); 
                 
             } catch (error) {
-                console.error("שגיאה בסנכרון:", error);
-                alert("קרתה תקלה בסנכרון מול השרת.");
+                console.error(error);
+                alert("שגיאה בסנכרון לגוגל.");
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
