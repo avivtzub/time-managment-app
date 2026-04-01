@@ -291,29 +291,23 @@ def schedule_tasks(session: Session = Depends(get_session)):
         for task in tasks:
             task_duration = timedelta(minutes=task.duration_minutes)
             
-            # --- הלוגיקה החדשה: המרת רמת אנרגיה להעדפת זמן ---
-            # אם לא צוינה שעה מדויקת ולא צוינה העדפת בוקר/ערב מפורשת, ה-AI יקבע לפי אנרגיה!
+            # --- המרת רמת אנרגיה להעדפת זמן ---
             if task.preferred_time == "Any" and not getattr(task, 'preferred_start_time', None):
                 if task.energy_level == 3:
-                    task.preferred_time = "Morning"   # דורש פוקוס עמוק -> אוטומטית לבוקר
+                    task.preferred_time = "Morning"
                 elif task.energy_level == 1:
-                    task.preferred_time = "Evening"   # משימות קלילות -> אוטומטית לערב
+                    task.preferred_time = "Evening"
                 else:
-                    task.preferred_time = "Afternoon" # אנרגיה בינונית -> צהריים
+                    task.preferred_time = "Afternoon"
 
             # חיתוך החורים הפנויים 
             valid_blocks = []
             for b in free_blocks:
                 pref_start, pref_end = start_of_day, end_of_day
                 
-                # --- הלוגיקה לשעות מדויקות (Soft Timeboxing) ---
+                # כשיש שעה מדויקת - פותחים את החלון לכל היום! האלגוריתם ימצא את ההכי קרוב מתמטית
                 if getattr(task, 'preferred_start_time', None):
-                    try:
-                        exact_start = datetime.strptime(f"{date_str} {task.preferred_start_time}", "%Y-%m-%d %H:%M")
-                        pref_start = max(start_of_day, exact_start - timedelta(minutes=15))
-                        pref_end = end_of_day 
-                    except: pass
-                # --- לוגיקה רגילה של בוקר/צהריים/ערב ---
+                    pass # משאירים את ההתחלה והסוף כקצוות היום
                 else:
                     if task.preferred_time == "Morning": pref_end = start_of_day.replace(hour=12)
                     elif task.preferred_time == "Afternoon": pref_start, pref_end = start_of_day.replace(hour=12), start_of_day.replace(hour=17)
@@ -322,20 +316,61 @@ def schedule_tasks(session: Session = Depends(get_session)):
                 overlap_start, overlap_end = max(b["start"], pref_start), min(b["end"], pref_end)
                 if overlap_start < overlap_end:
                     valid_blocks.append({"start": overlap_start, "end": overlap_end, "location": b["location"], "original": b})
-                    
+
+            # לוגיקת השיבוץ בפועל - חיפוש סטייה מינימלית
+            best_slot = None
+            min_delta = timedelta(days=999) # מתחילים מסטייה "אינסופית"
+
             for vb in valid_blocks:
                 transit_mins = task.estimated_transit_minutes if task.location_context != "Anywhere" and vb["location"] != "Anywhere" and task.location_context != vb["location"] else 0
                 total_required = task_duration + timedelta(minutes=transit_mins)
                 
+                # אם החור הפנוי יכול להכיל את המשימה
                 if (vb["end"] - vb["start"]) >= total_required:
-                    task.start_time = vb["start"] + timedelta(minutes=transit_mins)
-                    task.end_time = task.start_time + task_duration
-                    task.status = "scheduled"
-                    session.add(task)
-                    scheduled_count += 1
-                    vb["original"]["start"] = task.end_time # מעדכן את החור המקורי שלא נדרוס
-                    if task.location_context != "Anywhere": vb["original"]["location"] = task.location_context
-                    break 
+                    proposed_start = vb["start"] + timedelta(minutes=transit_mins)
+                    
+                    if getattr(task, 'preferred_start_time', None):
+                        try:
+                            exact_start = datetime.strptime(f"{date_str} {task.preferred_start_time}", "%Y-%m-%d %H:%M")
+                            # מחשבים את המקסימום המותר (מתי המשימה חייבת להתחיל כדי להסתיים בזמן)
+                            max_possible_start = vb["end"] - task_duration
+                            
+                            # נוסחת Clamp: כולאת את שעת היעד בין הקצה המוקדם לקצה המאוחר של החור
+                            optimal_in_block = max(proposed_start, min(exact_start, max_possible_start))
+                            
+                            # חישוב הסטייה המדויקת מהשעה שביקשת
+                            delta = abs(optimal_in_block - exact_start)
+                            
+                            # האם מצאנו מיקום קרוב יותר למה שביקשת?
+                            if delta < min_delta:
+                                min_delta = delta
+                                best_slot = {
+                                    "start": optimal_in_block,
+                                    "end": optimal_in_block + task_duration,
+                                    "vb": vb
+                                }
+                        except Exception as e:
+                            print(e)
+                    else:
+                        # אין שעה מדויקת - לוקחים את החור הפנוי הראשון שמצאנו
+                        best_slot = {
+                            "start": proposed_start,
+                            "end": proposed_start + task_duration,
+                            "vb": vb
+                        }
+                        break # עוצרים אחרי מציאת המקום הראשון שמתאים
+
+            # אחרי שסרקנו את כל היום, משבצים במנצח (או הראשון שמצאנו, או הכי קרוב מתמטית)
+            if best_slot:
+                task.start_time = best_slot["start"]
+                task.end_time = best_slot["end"]
+                task.status = "scheduled"
+                session.add(task)
+                scheduled_count += 1
+                
+                # מעדכנים את החור המקורי שלא נדרוס במשימה הבאה
+                best_slot["vb"]["original"]["start"] = task.end_time 
+                if task.location_context != "Anywhere": best_slot["vb"]["original"]["location"] = task.location_context
 
     session.commit()
     return {"message": f"שובצו {scheduled_count} משימות בהצלחה!"}
