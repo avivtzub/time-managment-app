@@ -97,6 +97,10 @@
                     if (task.preferred_time === 'Morning') prefTimeHeb = 'בוקר';
                     if (task.preferred_time === 'Afternoon') prefTimeHeb = 'צהריים';
                     if (task.preferred_time === 'Evening') prefTimeHeb = 'ערב';
+                    // --- התוספת החדשה ---
+                    if (task.preferred_start_time) {
+                        prefTimeHeb = task.preferred_start_time + " (זמן יעד)";
+                    }
 
                     // הלוגיקה החדשה של התאריכים!
                     let dateDisplay = '';

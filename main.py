@@ -32,17 +32,19 @@ engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
-    energy_level: int
-    status: str = "new" 
-    start_time: Optional[datetime] = None 
-    end_time: Optional[datetime] = None   
-    duration_minutes: Optional[int] = 30  
-    priority: int = 2          
-    location_context: str = "Anywhere" 
+    # --- החדש ---
+    energy_level: int = Field(default=2) # 1=Low, 2=Medium, 3=High
+    # ------------
+    duration_minutes: int
+    target_date: Optional[str] = None
+    preferred_time: str
+    priority: int
+    location_context: str = "Anywhere"
     estimated_transit_minutes: int = 0
-    # שני השדות החדשים שהוספנו!
-    target_date: Optional[str] = None # פורמט YYYY-MM-DD
-    preferred_time: str = "Any" # Morning, Afternoon, Evening, Any
+    status: str = "new"
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    preferred_start_time: Optional[str] = None
 
 app = FastAPI(title="Aviv's Smart Time Manager")
 
@@ -117,25 +119,30 @@ def smart_add_task(request: SmartTaskRequest, session: Session = Depends(get_ses
     אתה מנהל זמן אישי חכם. היום הוא {day_name}, התאריך: {today_str}.
     חלץ את המשימה מהמשפט החופשי והחזר *רק* JSON תקין.
 
-    חוקי זמנים (חדש!):
-    - target_date: תאריך היעד בפורמט YYYY-MM-DD. חשב אותו לפי היום ({today_str}). אם המשתמש אומר "מחר", הוסף יום. אם אומר "ביום חמישי", חשב מה התאריך של יום חמישי הקרוב. אם לא ציין מתי, החזר null.
-    - preferred_time: חלץ את הזמן המועדף. "Morning" (08-12), "Afternoon" (12-17), "Evening" (17-22). אם לא צוין, החזר "Any".
+    חוקי זמנים ואנרגיה:
+    - target_date: תאריך היעד. אם "מחר", הוסף יום. אם צוין יום בשבוע, חשב תאריך. אחרת null.
+    - preferred_time: "Morning" (08-12), "Afternoon" (12-17), "Evening" (17-22). אם לא צוין, "Any".
+    - energy_level: חלץ ודרג את רמת האנרגיה הנדרשת מ-1 עד 3. 1 = נמוכה (סידורים, מיילים), 2 = בינונית, 3 = גבוהה (למידה אינטנסיבית, כתיבת קוד, פתרון בעיות).
 
     חוקי מיקומים: "אוניברסיטה" -> "אוניברסיטת תל אביב", "דירה" -> "חובבי ציון 37 תל אביב", "בית" -> "בילו 39 רעננה". אחרת "Anywhere".
     - duration_minutes: הערכת זמן ביצוע.
-    - requires_travel: true אם יוצאים למקום.
-    - estimated_transit_minutes: דקות נסיעה ממוצעת ביום יום.
+    - estimated_transit_minutes: דקות נסיעה.
+    
+    CRITICAL TIME RULES:
+    1. If the user specifies an EXACT start time (e.g., "from 15:00", "at 14:30"), set 'preferred_start_time' to that time in 'HH:MM' 24-hour format. Otherwise, set it to null.
+    2. If the user specifies a start and end time (e.g., "from 15:00 to 16:30"), mathematically calculate the 'duration_minutes' based on that range (e.g. 90).
 
     החזר בדיוק את המבנה הזה:
     {{
         "title": "שם המשימה",
-        "energy_level": 1,
+        "energy_level": 3,
         "duration_minutes": 60,
         "priority": 2,
         "target_date": "2026-04-02",
         "preferred_time": "Morning",
         "location_context": "Anywhere",
-        "estimated_transit_minutes": 0
+        "estimated_transit_minutes": 0,
+        "preferred_start_time": null
     }}
     המשפט של המשתמש: "{request.text}"
     """
@@ -280,22 +287,42 @@ def schedule_tasks(session: Session = Depends(get_session)):
         if current_time < end_of_day:
             free_blocks.append({"start": current_time, "end": end_of_day, "location": current_location})
 
-        # שיבוץ לפי זמנים מועדפים
+        # שיבוץ לפי זמנים מועדפים ואנרגיה
         for task in tasks:
             task_duration = timedelta(minutes=task.duration_minutes)
             
-            # חיתוך החורים הפנויים לפי בוקר/צהריים/ערב
+            # --- הלוגיקה החדשה: המרת רמת אנרגיה להעדפת זמן ---
+            # אם לא צוינה שעה מדויקת ולא צוינה העדפת בוקר/ערב מפורשת, ה-AI יקבע לפי אנרגיה!
+            if task.preferred_time == "Any" and not getattr(task, 'preferred_start_time', None):
+                if task.energy_level == 3:
+                    task.preferred_time = "Morning"   # דורש פוקוס עמוק -> אוטומטית לבוקר
+                elif task.energy_level == 1:
+                    task.preferred_time = "Evening"   # משימות קלילות -> אוטומטית לערב
+                else:
+                    task.preferred_time = "Afternoon" # אנרגיה בינונית -> צהריים
+
+            # חיתוך החורים הפנויים 
             valid_blocks = []
             for b in free_blocks:
                 pref_start, pref_end = start_of_day, end_of_day
-                if task.preferred_time == "Morning": pref_end = start_of_day.replace(hour=12)
-                elif task.preferred_time == "Afternoon": pref_start, pref_end = start_of_day.replace(hour=12), start_of_day.replace(hour=17)
-                elif task.preferred_time == "Evening": pref_start = start_of_day.replace(hour=17)
+                
+                # --- הלוגיקה לשעות מדויקות (Soft Timeboxing) ---
+                if getattr(task, 'preferred_start_time', None):
+                    try:
+                        exact_start = datetime.strptime(f"{date_str} {task.preferred_start_time}", "%Y-%m-%d %H:%M")
+                        pref_start = max(start_of_day, exact_start - timedelta(minutes=15))
+                        pref_end = end_of_day 
+                    except: pass
+                # --- לוגיקה רגילה של בוקר/צהריים/ערב ---
+                else:
+                    if task.preferred_time == "Morning": pref_end = start_of_day.replace(hour=12)
+                    elif task.preferred_time == "Afternoon": pref_start, pref_end = start_of_day.replace(hour=12), start_of_day.replace(hour=17)
+                    elif task.preferred_time == "Evening": pref_start = start_of_day.replace(hour=17)
                 
                 overlap_start, overlap_end = max(b["start"], pref_start), min(b["end"], pref_end)
                 if overlap_start < overlap_end:
                     valid_blocks.append({"start": overlap_start, "end": overlap_end, "location": b["location"], "original": b})
-
+                    
             for vb in valid_blocks:
                 transit_mins = task.estimated_transit_minutes if task.location_context != "Anywhere" and vb["location"] != "Anywhere" and task.location_context != vb["location"] else 0
                 total_required = task_duration + timedelta(minutes=transit_mins)
