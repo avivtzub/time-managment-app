@@ -26,7 +26,7 @@ The system will automatically scan your Google Calendar (including external sche
 * **🗓️ Smart Scheduling Algorithm:** Automatically finds available slots without double-booking over existing hard events.
 * **🚗 Dynamic Transit Calculation:** Estimates and allocates buffer times for travel if a task requires a specific location.
 * **🖱️ Interactive UI:** Visually review proposed slots, Drag & Drop to adjust times, and manually edit events before pushing them to the cloud.
-* **☁️ Cloud Sync:** One-click two-way synchronization with Google Calendar via secure OAuth 2.0.
+* **☁️ Cloud Sync:** Publish proposed tasks to Google Calendar with retry-safe event identities and per-task results.
 * **⚡ Priority Engine:** Intelligently schedules urgent tasks for "today" and defers flexible tasks to future slots.
 
 ## 📸 Screenshots
@@ -56,7 +56,7 @@ The system will automatically scan your Google Calendar (including external sche
 ## 🚀 Quick Start
 
 ### Prerequisites
-* Python 3.8+
+* Python 3.10+
 * A Google Cloud project with the **Google Calendar API** enabled.
 * OAuth 2.0 Client credentials (`credentials.json`) from Google Cloud.
 * A Gemini API Key from Google AI Studio.
@@ -65,8 +65,8 @@ The system will automatically scan your Google Calendar (including external sche
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/avivtzub/ai-time-manager.git
-   cd ai-time-manager
+   git clone https://github.com/avivtzub/time-managment-app.git
+   cd time-managment-app
    ```
 
 2. **Create and activate a virtual environment:**
@@ -77,13 +77,14 @@ The system will automatically scan your Google Calendar (including external sche
 
 3. **Install dependencies:**
    ```bash
-   pip install fastapi uvicorn sqlmodel google-generativeai google-auth-oauthlib google-api-python-client python-dotenv
+   pip install -r requirements.txt
    ```
 
 4. **Environment Variables:**
    Create a `.env` file in the root directory and add your Gemini API key:
    ```env
    GEMINI_API_KEY=your_api_key_here
+   APP_URL=http://localhost:8000
    ```
 
 5. **Start the server:**
@@ -93,6 +94,24 @@ The system will automatically scan your Google Calendar (including external sche
 
 6. Open your browser and navigate to `http://localhost:8000/`.
 7. Click **"Connect with Google Calendar"** to authorize the application.
+
+For local HTTP OAuth development, set `OAUTHLIB_INSECURE_TRANSPORT=1` only in your local environment. Register `${APP_URL}/auth/callback` as an authorized redirect URI in Google Cloud. On deployment, set `APP_URL` to your HTTPS application URL.
+
+## Scheduling and recovery
+
+- Working hours are 08:00–22:00 in `Asia/Jerusalem`. Undated tasks search 14 days, starting tomorrow (today for urgent tasks). Dated tasks stay on that date.
+- Exact times default to **fixed**: a conflict leaves the task unscheduled. Choose **preferred** to allow the closest available time. Energy ranks otherwise available slots without changing the saved preference.
+- Manual time changes lock proposals by default. Locked proposals remain in place when replanning; unlock them to include them again.
+- Calendar reads include all pages and all-day intervals. An incomplete read stops planning rather than assuming the calendar is free.
+- Sync reports each failed task. Retry after a connection failure to recover the same Google event rather than inserting another. A pending sync identity protects a task from edits until its outcome is resolved.
+- Existing SQLite databases receive additive columns on startup. Back up `tasks.db` before deployment and use persistent storage for the database and Google token.
+
+Run offline regression tests from the project folder:
+
+```bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
+```
 
 ## 🏗️ Architecture & Data Flow
 

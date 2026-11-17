@@ -2,10 +2,11 @@ fastapi
 uvicorn
 sqlmodel
 google-generativeai
-pydantic
+pydantic>=2
 icalendar
 python-multipart
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 python-dotenv
+tzdata
