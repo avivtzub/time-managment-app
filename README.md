@@ -8,7 +8,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](#)
 [![Google Calendar](https://img.shields.io/badge/Google_Calendar-API-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](#)
 [![Gemini AI](https://img.shields.io/badge/Gemini_AI-Flash_2.5-8E75B2?style=for-the-badge&logo=google&logoColor=white)](#)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](#)
+[![CSS](https://img.shields.io/badge/Responsive_CSS-176C63?style=for-the-badge&logo=css&logoColor=white)](#)
 
 </div>
 
@@ -46,7 +46,7 @@ The system will automatically scan your Google Calendar (including external sche
 
 ### Frontend
 * **Vanilla JavaScript & HTML** for lightweight client-side logic.
-* **Tailwind CSS** for modern, responsive styling.
+* **Responsive CSS** for a Hebrew RTL dashboard with desktop and mobile layouts.
 * **FullCalendar.js** for interactive calendar rendering and event manipulation.
 
 ### Integrations & APIs
@@ -111,6 +111,12 @@ Run offline regression tests from the project folder:
 ```bash
 pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
+```
+
+Frontend interaction regressions run separately with Node.js:
+
+```bash
+node tests/frontend.mjs
 ```
 
 ## 🏗️ Architecture & Data Flow

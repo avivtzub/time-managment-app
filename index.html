@@ -1,91 +1,983 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מנהל הזמן של אביב</title>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
-    <style>
-        #calendar { max-width: 900px; margin: 20px auto; padding: 10px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    </style>
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#176c63">
+<title>הזמן שלך · תכנון אישי</title>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<style>
+:root {
+    --paper:#f6f5ef;
+    --navy:#172d3b;
+    --muted:#63717b;
+    --teal:#176c63;
+    --line:#dfe5e1;
+    --white:#fff;
+    --soft:#edf5f1;
+    --danger:#a33535;
+    --blue:#4285f4;
+}
+* {
+    box-sizing:border-box;
+}
+body {
+    margin:0;
+    background:var(--paper);
+    color:var(--navy);
+    font-family:"Segoe UI",Arial,sans-serif;
+    font-size:15px;
+    line-height:1.6;
+}
+button,input,select,textarea {
+    font:inherit;
+}
+button {
+    cursor:pointer;
+}
+button:disabled {
+    cursor:wait;
+    opacity:.55;
+}
+button,a,input,select,textarea {
+    touch-action:manipulation;
+}
+:focus-visible {
+    outline:3px solid #54a89b;
+    outline-offset:3px;
+}
+button {
+    min-height:44px;
+    border:1px solid transparent;
+    border-radius:10px;
+    padding:10px 16px;
+    font-weight:600;
+    transition:background .15s,box-shadow .15s;
+}
+button:hover:not(:disabled) {
+    filter:brightness(.96);
+}
+h1,h2,h3,p {
+    margin:0;
+}
+h1 {
+    font-size:clamp(28px,3vw,38px);
+    font-weight:650;
+    letter-spacing:-1px;
+    line-height:1.3;
+}
+h2 {
+    font-size:20px;
+    letter-spacing:-.4px;
+}
+h3 {
+    font-size:15px;
+}
+input,select,textarea {
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 12px;
+    background:#fff;
+    color:var(--navy);
+    font-size:16px;
+}
+input[type=checkbox] {
+    width:18px;
+    height:18px;
+    accent-color:var(--teal);
+}
+input[type=datetime-local],input[type=time] {
+    direction:ltr;
+    text-align:right;
+}
+textarea {
+    resize:vertical;
+    min-height:106px;
+    line-height:1.7;
+}
+label {
+    display:block;
+    font-weight:600;
+    font-size:14px;
+    margin-bottom:7px;
+}
+.hidden {
+    display:none!important;
+}
+.app {
+    max-width:1500px;
+    margin:auto;
+    padding:34px 36px 40px;
+}
+.masthead {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    margin-bottom:26px;
+}
+.brand-line {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    color:var(--teal);
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.4px;
+    margin-bottom:8px;
+}
+.brand-mark {
+    width:27px;
+    height:27px;
+    background:var(--teal);
+    color:white;
+    display:grid;
+    place-items:center;
+    border-radius:8px;
+}
+.subtitle {
+    color:var(--muted);
+    margin-top:8px;
+}
+.connect {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#fff;
+    border-color:var(--line);
+    color:var(--navy);
+    white-space:nowrap;
+    box-shadow:0 2px 3px #172d3b03;
+}
+.connect svg {
+    color:var(--teal);
+}
+.workflow {
+    display:flex;
+    gap:0;
+    align-items:center;
+    margin-bottom:24px;
+    padding:14px 20px;
+    background:#edeFE8;
+    border:1px solid #e2e6dd;
+    border-radius:13px;
+    color:var(--muted);
+    font-size:13px;
+}
+.step {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    white-space:nowrap;
+}
+.step b {
+    display:grid;
+    place-items:center;
+    border:1px solid #ccd5cc;
+    border-radius:50%;
+    height:24px;
+    width:24px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--navy);
+}
+.step-arrow {
+    padding:0 24px;
+    color:#91a095;
+}
+.dashboard {
+    display:grid;
+    grid-template-columns:330px minmax(0,1fr);
+    gap:24px;
+    align-items:start;
+}
+.sidebar {
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    min-width:0;
+}
+.panel {
+    background:white;
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:0 5px 18px #172d3b03;
+}
+.composer {
+    padding:23px;
+}
+.eyebrow {
+    color:var(--teal);
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:7px;
+}
+.composer label {
+    font-size:19px;
+    margin-bottom:14px;
+}
+.composer textarea {
+    background:#fafbf9;
+}
+.primary {
+    background:var(--teal);
+    color:white;
+}
+.navy {
+    background:var(--navy);
+    color:white;
+}
+.secondary {
+    background:white;
+    border-color:#c4d9d2;
+    color:var(--teal);
+}
+.quiet {
+    background:#f2f4f1;
+    color:var(--navy);
+}
+.full {
+    width:100%;
+}
+.composer .primary {
+    margin-top:12px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+}
+.hint {
+    font-size:12px;
+    line-height:1.7;
+    color:var(--muted);
+    margin-top:11px;
+}
+.worklist {
+    padding:21px;
+}
+.section-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+}
+.section-heading h2 {
+    font-size:17px;
+}
+.count {
+    font-size:12px;
+    font-weight:700;
+    padding:2px 9px;
+    background:#eef2ed;
+    border-radius:20px;
+    color:var(--muted);
+    min-width:28px;
+    text-align:center;
+}
+.tasks {
+    display:flex;
+    flex-direction:column;
+    gap:11px;
+}
+.task-card {
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px;
+    background:#fff;
+    overflow-wrap:anywhere;
+}
+.task-title {
+    font-weight:650;
+    line-height:1.6;
+}
+.task-meta {
+    font-size:12px;
+    color:var(--muted);
+    margin-top:5px;
+}
+.task-location {
+    font-size:12px;
+    color:var(--teal);
+    margin-top:4px;
+}
+.task-actions {
+    display:flex;
+    gap:7px;
+    margin-top:10px;
+    padding-top:8px;
+    border-top:1px solid #eef1eb;
+}
+.text-button {
+    background:transparent;
+    color:var(--teal);
+    font-size:12px;
+    padding:5px 8px;
+    min-height:44px;
+}
+.delete-button {
+    color:var(--danger);
+}
+.task-reason {
+    background:#fff7e8;
+    color:#8e6123;
+    border-radius:7px;
+    font-size:12px;
+    padding:8px;
+    margin-top:10px;
+}
+.empty {
+    padding:22px 5px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+}
+.empty-icon {
+    display:grid;
+    place-items:center;
+    margin:0 auto 12px;
+    width:40px;
+    height:40px;
+    border-radius:12px;
+    background:#f0f5ef;
+    color:var(--teal);
+    font-size:23px;
+}
+.empty strong {
+    display:block;
+    color:var(--navy);
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:5px;
+}
+.planning {
+    padding:21px;
+}
+.planning h2 {
+    font-size:17px;
+    margin-bottom:6px;
+}
+.planning .hint {
+    margin:0 0 15px;
+}
+.planning button+button {
+    margin-top:9px;
+}
+.calendar-panel {
+    padding:25px 26px 20px;
+    min-width:0;
+}
+.calendar-heading {
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    align-items:start;
+    margin-bottom:14px;
+}
+.calendar-heading h2 {
+    font-size:23px;
+}
+.calendar-heading p {
+    font-size:13px;
+    color:var(--muted);
+    margin-top:5px;
+}
+.proposal-count {
+    background:var(--soft);
+    color:var(--teal);
+    padding:6px 12px;
+    border-radius:8px;
+    font-size:12px;
+    white-space:nowrap;
+}
+.legend {
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    margin-bottom:23px;
+    font-size:12px;
+    color:var(--muted);
+}
+.legend span {
+    display:flex;
+    gap:6px;
+    align-items:center;
+}
+.dot {
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--teal);
+}
+.dot.blue {
+    background:var(--blue);
+}
+.dot.gray {
+    background:#9e9e9e;
+}
+.calendar-note {
+    border-top:1px solid var(--line);
+    padding-top:14px;
+    margin-top:17px;
+    display:flex;
+    gap:8px;
+    align-items:start;
+    font-size:12px;
+    color:var(--muted);
+}
+.calendar-note svg {
+    flex:none;
+    margin-top:3px;
+}
+.feedback {
+    padding:14px 18px;
+    border:1px solid #c4dcd3;
+    background:#ecf5f0;
+    color:#15564b;
+    border-radius:12px;
+    margin-bottom:20px;
+    white-space:pre-line;
+    overflow-wrap:anywhere;
+}
+.feedback.error {
+    background:#fff0ed;
+    border-color:#efd0ca;
+    color:#9a3430;
+}
+.results {
+    margin-bottom:17px;
+    border:1px solid #eadac0;
+    background:#fffaf0;
+    border-radius:12px;
+    padding:15px 18px;
+    color:#795625;
+}
+.results h3 {
+    margin-bottom:6px;
+}
+.results ul {
+    padding-right:20px;
+    font-size:13px;
+    margin:0;
+}
+.loading-note {
+    font-size:13px;
+    color:var(--muted);
+    padding:16px 0;
+}
+.calendar-loading {
+    margin-bottom:12px;
+    font-size:12px;
+    color:var(--teal);
+}
+footer {
+    padding-top:24px;
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+}
+/* FullCalendar keeps its native event and drag behavior. */ .fc {
+    --fc-border-color:#e7ebe5;
+    --fc-today-bg-color:#f1f6ef;
+    --fc-neutral-bg-color:#fafbf8;
+    --fc-page-bg-color:#fff;
+    --fc-button-bg-color:#fff;
+    --fc-button-border-color:#dfe5e1;
+    --fc-button-text-color:#42535e;
+    --fc-button-hover-bg-color:#f1f5ef;
+    --fc-button-hover-border-color:#c6d4cb;
+    --fc-button-active-bg-color:#e8f1ec;
+    --fc-button-active-border-color:#b8cfc2;
+    --fc-event-border-color:transparent;
+    --fc-now-indicator-color:#d27553;
+    font-size:12px;
+}
+.fc .fc-toolbar-title {
+    font-size:17px;
+    font-weight:650;
+    letter-spacing:-.3px;
+}
+.fc .fc-button {
+    border-radius:8px!important;
+    min-height:44px;
+    padding:6px 11px;
+    font-size:12px;
+    font-weight:500;
+    box-shadow:none!important;
+}
+.fc .fc-button-group {
+    gap:4px;
+}
+.fc .fc-button-group>.fc-button {
+    margin:0!important;
+}
+.fc .fc-col-header-cell-cushion {
+    padding:11px 4px;
+    font-weight:600;
+    color:var(--navy);
+    text-decoration:none;
+}
+.fc .fc-scrollgrid {
+    border-radius:10px;
+    overflow:hidden;
+}
+.fc .fc-timegrid-slot {
+    height:30px;
+}
+.fc .fc-timegrid-slot-label-cushion {
+    font-size:11px;
+    color:#7b898e;
+}
+.fc .fc-event {
+    border-radius:5px;
+    padding:2px 4px;
+    box-shadow:none;
+}
+.fc .fc-event-title {
+    font-weight:500;
+}
+.fc .fc-event-time {
+    font-size:10px;
+}
+.fc .fc-timegrid-now-indicator-line {
+    border-width:1px;
+}
+.fc .fc-daygrid-day-number {
+    color:var(--navy);
+    text-decoration:none;
+}
+.fc .fc-toolbar.fc-header-toolbar {
+    gap:12px;
+    margin-bottom:17px;
+}
+.fc .fc-timegrid-axis-cushion {
+    font-size:10px;
+}
+.modal-backdrop {
+    position:fixed;
+    inset:0;
+    z-index:50;
+    background:#0f243b66;
+    backdrop-filter:blur(3px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:22px;
+}
+.dialog {
+    width:100%;
+    max-width:480px;
+    max-height:90dvh;
+    overflow-y:auto;
+    background:white;
+    border-radius:20px;
+    padding:26px;
+    box-shadow:0 20px 100px #142b3b33;
+}
+.modal-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:5px;
+}
+.modal-header h2 {
+    font-size:21px;
+    overflow-wrap:anywhere;
+}
+.close-button {
+    background:#f2f4f1;
+    color:var(--muted);
+    min-width:44px;
+    min-height:44px;
+    padding:4px;
+    font-size:24px;
+    line-height:1;
+}
+.modal-intro {
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:22px;
+}
+.field {
+    margin-bottom:17px;
+}
+.field label+select {
+    margin-bottom:12px;
+}
+.lock-label {
+    display:flex;
+    align-items:start;
+    gap:10px;
+    font-size:13px;
+    background:var(--soft);
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:17px;
+}
+.lock-label input {
+    flex:none;
+    margin-top:3px;
+}
+.modal-error {
+    font-size:13px;
+    color:var(--danger);
+    white-space:pre-line;
+}
+.modal-error:not(:empty) {
+    padding:12px;
+    background:#fff0ed;
+    border-radius:9px;
+    margin-bottom:15px;
+}
+.modal-actions {
+    border-top:1px solid var(--line);
+    padding-top:18px;
+    margin-top:7px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+.modal-actions>div {
+    display:flex;
+    gap:7px;
+}
+.modal-actions .text-button {
+    font-size:13px;
+}
+.dialog-saving {
+    opacity:.7;
+}
+@media(min-width:1400px) {
+    .dashboard {
+        grid-template-columns:350px minmax(0,1fr);
+    }
+}
+@media(max-width:1150px) {
+    .app {
+        padding:24px;
+    }
+    .dashboard {
+        grid-template-columns:300px minmax(0,1fr);
+        gap:18px;
+    }
+    .calendar-panel {
+        padding:20px 16px;
+    }
+    .fc .fc-toolbar.fc-header-toolbar {
+        flex-wrap:wrap;
+        justify-content:center;
+    }
+    .fc .fc-toolbar-chunk:nth-child(2) {
+        order:-1;
+        width:100%;
+        text-align:center;
+    }
+    .step-arrow {
+        padding:0 16px;
+    }
+}
+@media(max-width:900px) {
+    .dashboard {
+        grid-template-columns:1fr;
+    }
+    .sidebar {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:16px;
+    }
+    .composer {
+        grid-row:span 2;
+    }
+    .planning {
+        grid-column:2;
+    }
+    .calendar-panel {
+        margin-top:2px;
+    }
+    .calendar-heading h2 {
+        font-size:21px;
+    }
+}
+@media(max-width:600px) {
+    .app {
+        padding:20px 14px;
+    }
+    .masthead {
+        align-items:start;
+        gap:12px;
+        flex-direction:column;
+        margin-bottom:20px;
+    }
+    .connect {
+        padding:8px 13px;
+        min-height:44px;
+        font-size:13px;
+    }
+    .subtitle {
+        font-size:14px;
+    }
+    .workflow {
+        padding:12px;
+        flex-wrap:wrap;
+        gap:8px 0;
+        font-size:11px;
+    }
+    .step b {
+        width:19px;
+        height:19px;
+        font-size:10px;
+    }
+    .step {
+        gap:5px;
+    }
+    .step-arrow {
+        padding:0 7px;
+    }
+    .sidebar {
+        display:flex;
+    }
+    .composer,.worklist,.planning {
+        padding:20px;
+    }
+    .calendar-panel {
+        padding:19px 12px;
+    }
+    .calendar-heading {
+        gap:10px;
+    }
+    .proposal-count {
+        font-size:11px;
+        padding:5px 8px;
+    }
+    .legend {
+        gap:12px;
+        margin-bottom:20px;
+        font-size:11px;
+    }
+    .fc .fc-toolbar-title {
+        font-size:16px;
+    }
+    .fc .fc-button {
+        min-height:44px;
+        padding:6px 10px;
+    }
+    .fc .fc-timegrid-slot {
+        height:36px;
+    }
+    .dialog {
+        padding:22px 18px;
+    }
+    .modal-backdrop {
+        padding:12px;
+    }
+    .modal-actions {
+        flex-wrap:wrap;
+    }
+    .modal-actions>div {
+        margin-right:auto;
+    }
+    .calendar-heading p {
+        max-width:220px;
+    }
+    .planning-buttons {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:9px;
+    }
+    .planning button+button {
+        margin-top:0;
+    }
+    .planning-buttons button {
+        padding:10px 8px;
+    }
+    .brand-line {
+        margin-bottom:10px;
+    }
+}
+@media(prefers-reduced-motion:reduce) {
+    * {
+        transition:none!important;
+        scroll-behavior:auto!important;
+    }
+}
+</style>
 </head>
-<body class="bg-gray-100 font-sans p-4">
+<body>
+<div class="app">
+<header class="masthead">
+<div>
+<div class="brand-line">
+<span class="brand-mark" aria-hidden="true">ז</span>מרחב התכנון האישי שלך</div>
+<h1>הזמן שלך, מסודר.</h1>
+<p class="subtitle">כל מה שצריך לעשות, עם מקום ביומן.</p>
+</div>
+<button class="connect" onclick="loginToGoogle()">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+<rect x="3" y="5" width="18" height="16" rx="3"/>
+<path d="M16 3v4M8 3v4M3 11h18"/>
+</svg>חיבור ל־Google Calendar</button>
+</header>
+<nav class="workflow" aria-label="שלבי התכנון">
+<span class="step">
+<b>1</b>הוספת משימות</span>
+<span class="step-arrow" aria-hidden="true">←</span>
+<span class="step">
+<b>2</b>הצעת שיבוץ</span>
+<span class="step-arrow" aria-hidden="true">←</span>
+<span class="step">
+<b>3</b>בדיקה ועריכה</span>
+<span class="step-arrow" aria-hidden="true">←</span>
+<span class="step">
+<b>4</b>סנכרון ליומן</span>
+</nav>
+<div id="feedback" role="status" aria-live="polite" class="feedback hidden">
+</div>
+<main class="dashboard">
+<aside class="sidebar" aria-label="ניהול משימות">
+<section class="panel composer">
+<p class="eyebrow">מתחילים כאן</p>
+<label for="taskTitle">מה צריך לעשות?</label>
+<textarea id="taskTitle" rows="3" placeholder="למשל: ללמוד למבחן ביום חמישי בבוקר, למשך שעתיים" aria-describedby="composerHint">
+</textarea>
+<button class="primary full" onclick="addTask()">
+<span aria-hidden="true">＋</span> הוסף משימה</button>
+<p class="hint" id="composerHint">אפשר לכתוב בחופשיות. נוסיף משימה עם תאריך, משך ושעת יעד לפי התיאור שלך. להוספה מהירה: Ctrl / ⌘ + Enter.</p>
+</section>
+<section class="panel planning" aria-labelledby="planningHeading">
+<h2 id="planningHeading">מהמשימות אל היומן</h2>
+<p class="hint">בדוק את ההצעות הירוקות לפני הסנכרון. הן נשמרות כאן עד לשליחה לגוגל.</p>
+<div class="planning-buttons">
+<button class="navy full" onclick="proposeSchedule()">הצע שיבוץ</button>
+<button class="secondary full" onclick="confirmSync()">סנכרן לגוגל</button>
+</div>
+</section>
+<section class="panel worklist" aria-labelledby="tasksHeading">
+<div class="section-heading">
+<h2 id="tasksHeading">ממתינות לשיבוץ</h2>
+<span class="count" id="pendingCount" aria-label="מספר משימות ממתינות">—</span>
+</div>
+<div id="tasksList" class="tasks" aria-busy="true">
+<p class="loading-note">טוען את המשימות שלך…</p>
+</div>
+</section>
 
-    <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-10 p-6 border border-gray-200">
-        <h1 class="text-2xl font-bold text-center text-indigo-600 mb-6">היומן החכם שלי 🗓️</h1>
-
-        <div style="text-align: center; margin-bottom: 24px;">
-            <button onclick="loginToGoogle()" class="w-full bg-blue-500 text-white px-5 py-3 rounded-xl font-medium hover:bg-blue-600 transition shadow-md">
-                התחבר עם Google Calendar 🔗
-            </button>
-        </div>
-
-        <div class="mb-8 flex gap-2">
-            <input type="text" id="taskTitle" aria-label="תיאור המשימה" placeholder="למשל: ללמוד למבחן ביום חמישי בבוקר בספרייה"
-                   class="border border-gray-300 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-            <button onclick="addTask()"
-                    class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-700 transition min-w-[80px]">
-                הוסף
-            </button>
-        </div>
-
-        <div id="feedback" role="status" aria-live="polite" class="hidden rounded-lg p-4 mb-4 whitespace-pre-line"></div>
-        <p class="text-sm text-gray-500 mb-3">משימות גמישות נבדקות עד 14 ימים קדימה. שינוי ידני נועל את השיבוץ; אפשר לבטל את הנעילה בחלון העריכה. השעות מוצגות לפי אזור הזמן של המכשיר.</p>
-        <div id='calendar'></div>
-        <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full max-h-[90vh] overflow-y-auto" dir="rtl" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-                <h3 class="text-xl font-bold mb-4 text-indigo-600" id="modalTitle">ערוך שיבוץ 🎯</h3>
-                <input type="hidden" id="modalEventId">
-                <div class="mb-3">
-                    <label for="modalTimeMode" class="block text-sm text-gray-600 mb-1">סוג שעת היעד</label>
-                    <select id="modalTimeMode" class="w-full border p-2 rounded-lg"><option value="fixed">שעה קבועה — חייב להתחיל בזמן</option><option value="preferred">שעה מועדפת — אפשר להזיז</option></select>
-                    <label for="modalPreferredStart" class="block text-sm text-gray-600 mt-2">שעת יעד (לא חובה)</label>
-                    <input type="time" id="modalPreferredStart" class="w-full border p-2 rounded-lg">
-                </div>
-                <label class="block mb-3 text-sm"><input type="checkbox" id="modalLocked"> שמור את השיבוץ בתכנון מחדש</label>
-                <p id="modalError" role="alert" class="text-sm text-red-700 mb-3"></p>
-                <div class="mb-3">
-                    <label for="modalStart" class="block text-sm text-gray-600 mb-1 font-medium">התחלה:</label>
-                    <input type="datetime-local" id="modalStart" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
-                <div class="mb-5">
-                    <label for="modalEnd" class="block text-sm text-gray-600 mb-1 font-medium">סיום:</label>
-                    <input type="datetime-local" id="modalEnd" class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
-                <div class="flex justify-between items-center">
-                    <button onclick="deleteFromModal()" class="text-red-500 hover:text-red-700 font-medium px-2">🗑️ מחק מהלו"ז</button>
-                    <div class="flex gap-2">
-                        <button onclick="closeModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">בטל</button>
-                        <button onclick="saveFromModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">שמור שינויים</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="scheduleResults" class="hidden my-4 p-4 bg-amber-50 rounded-lg" aria-live="polite"></div>
-        <h2 class="text-lg font-semibold text-gray-700 mt-8 mb-4">משימות שממתינות לשיבוץ:</h2>
-        <div id="tasksList" class="space-y-3 mb-6">
-            <p class="text-gray-400 text-center text-sm">טוען משימות...</p>
-        </div>
-
-        <div class="flex gap-3 mt-4">
-            <button onclick="proposeSchedule()"
-                    class="w-1/2 bg-indigo-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-indigo-600 transition shadow-md flex justify-center items-center gap-2">
-                <span>🎯</span> הצע שיבוץ ביומן
-            </button>
-            <button onclick="confirmSync()"
-                    class="w-1/2 bg-green-500 text-white px-4 py-3 rounded-xl font-medium hover:bg-green-600 transition shadow-md flex justify-center items-center gap-2">
-                <span>✅</span> סנכרן לגוגל
-            </button>
-        </div>
-    </div>
-
-    <script>
+</aside>
+<section class="panel calendar-panel" aria-labelledby="calendarHeading">
+<div class="calendar-heading">
+<div>
+<h2 id="calendarHeading">היומן שלך</h2>
+<p>תמונה אחת לכל התוכניות שלך.</p>
+</div>
+<span class="proposal-count" id="proposalCount" aria-live="polite">טוען הצעות…</span>
+</div>
+<div class="legend" aria-label="מקרא אירועים">
+<span>
+<i class="dot" aria-hidden="true">
+</i>הצעת שיבוץ</span>
+<span>
+<i class="dot blue" aria-hidden="true">
+</i>היומן הראשי בגוגל</span>
+<span>
+<i class="dot gray" aria-hidden="true">
+</i>יומנים נוספים</span>
+</div>
+<div id="scheduleResults" class="results hidden" aria-live="polite">
+</div>
+<div id="calendarLoading" class="calendar-loading hidden" role="status">מעדכן את היומן…</div>
+<div id="calendar">
+</div>
+<p class="calendar-note">
+<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+<rect x="5" y="10" width="14" height="11" rx="2"/>
+<path d="M8 10V7a4 4 0 018 0v3"/>
+</svg>
+<span>לחיצה על הצעה פותחת עריכה. הזזה ידנית נועלת את השיבוץ לתכנון הבא. משימות גמישות נבדקות עד 14 ימים קדימה. השעות מוצגות לפי אזור הזמן של המכשיר.</span>
+</p>
+</section>
+</main>
+<footer>קצת סדר, יותר זמן למה שחשוב.</footer>
+</div>
+<div id="editModal" class="modal-backdrop hidden">
+<section class="dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalIntro" tabindex="-1">
+<div class="modal-header">
+<h2 id="modalTitle">עריכת משימה</h2>
+<button class="close-button" onclick="closeModal()" aria-label="סגירת חלון העריכה">×</button>
+</div>
+<p class="modal-intro" id="modalIntro">התאם את הזמן למה שמתאים לך.</p>
+<input type="hidden" id="modalEventId">
+<div class="field">
+<label for="modalTimeMode">סוג שעת היעד</label>
+<select id="modalTimeMode">
+<option value="fixed">שעה קבועה — חייב להתחיל בזמן</option>
+<option value="preferred">שעה מועדפת — אפשר להזיז</option>
+</select>
+<label for="modalPreferredStart">שעת יעד (לא חובה)</label>
+<input type="time" id="modalPreferredStart">
+</div>
+<div class="field">
+<label for="modalStart">תחילת השיבוץ</label>
+<input type="datetime-local" id="modalStart">
+</div>
+<div class="field">
+<label for="modalEnd">סיום השיבוץ</label>
+<input type="datetime-local" id="modalEnd">
+</div>
+<label class="lock-label">
+<input type="checkbox" id="modalLocked">
+<span>שמור את השיבוץ הזה גם כשמציעים תכנון מחדש.</span>
+</label>
+<p id="modalError" role="alert" class="modal-error">
+</p>
+<div class="modal-actions">
+<button onclick="deleteFromModal()" class="text-button delete-button">מחק משימה</button>
+<div>
+<button onclick="closeModal()" class="quiet">ביטול</button>
+<button onclick="saveFromModal()" class="primary">שמור שינויים</button>
+</div>
+</div>
+</section>
+</div>
+<script>
         const API_URL = window.location.origin;
         let modalIsScheduled = false;
         let modalOriginalTimes = null;
         let modalOriginalPreferences = null;
+        let modalReturnFocus = null;
+        let modalSaving = false;
+        let modalDisabledStates = [];
+        function setModalPending(pending) {
+            modalSaving = pending;
+            if (pending) {
+                modalDisabledStates = [...document.querySelectorAll('#editModal button, #editModal input, #editModal select')].map(node => [node, node.disabled]);
+                modalDisabledStates.forEach(([node]) => { node.disabled = true; });
+            } else {
+                modalDisabledStates.forEach(([node, disabled]) => { node.disabled = disabled; });
+                modalDisabledStates = [];
+            }
+            document.querySelector('#editModal .dialog').setAttribute('aria-busy', pending ? 'true' : 'false');
+        }
+        const modalVisible = () => !document.getElementById('editModal').classList.contains('hidden');
+        function modalFocusables() {
+            return [...document.querySelectorAll('#editModal button, #editModal input:not([type="hidden"]), #editModal select')].filter(node => !node.disabled && !node.closest('.hidden'));
+        }
+        function revealModal() {
+            modalReturnFocus = document.activeElement;
+            document.getElementById('editModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            document.querySelector('.app').inert = true;
+            const focusTarget = document.getElementById(modalIsScheduled ? 'modalStart' : 'modalTimeMode');
+            focusTarget.focus();
+        }
+        function translatedReason(reason) {
+            const reasons = {
+                'Fixed time is unavailable': 'שעת היעד הקבועה אינה פנויה. אפשר לערוך את השעה ולנסות שוב.',
+                'No available slot long enough within the requested dates and hours': 'לא נמצא חלון פנוי ארוך מספיק בתאריכים ובשעות שהתבקשו.'
+            };
+            return reasons[reason] || reason;
+        }
 
         function loginToGoogle() { window.location.href = `${API_URL}/login`; }
         function element(tag, text, className = '') {
@@ -97,7 +989,7 @@
         function feedback(message, error = false) {
             const node = document.getElementById('feedback');
             node.textContent = message;
-            node.className = `rounded-lg p-4 mb-4 whitespace-pre-line ${error ? 'bg-red-50 text-red-800' : 'bg-indigo-50 text-indigo-800'}`;
+            node.className = `feedback${error ? ' error' : ''}`;
         }
         function errorText(data) {
             const detail = data.detail || data.error;
@@ -117,45 +1009,62 @@
         }
         async function busy(button, label, action) {
             const text = button.textContent;
+            if (button.disabled) return;
             button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
             button.textContent = label;
             try { await action(); }
             catch (error) { feedback(error.message || 'שגיאת רשת. נסה שוב.', true); }
-            finally { button.disabled = false; button.textContent = text; }
+            finally { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = text; }
         }
         async function refresh() {
-            window.myCalendar.refetchEvents();
+            window.myCalendar?.refetchEvents();
             await fetchTasks();
         }
         async function fetchTasks() {
+            const list = document.getElementById('tasksList');
+            list.setAttribute('aria-busy', 'true');
             try {
                 const tasks = await request('/tasks');
-                const list = document.getElementById('tasksList');
                 list.replaceChildren();
+                document.getElementById('pendingCount').textContent = tasks.length;
                 if (!tasks.length) {
-                    list.append(element('p', 'אין משימות שממתינות לשיבוץ.', 'text-gray-500 text-center text-sm'));
+                    const empty = element('div', '', 'empty');
+                    const icon = element('span', '✓', 'empty-icon');
+                    icon.setAttribute('aria-hidden', 'true');
+                    empty.append(icon, element('strong', 'עוד אין משימות שממתינות לשיבוץ'), element('p', 'אפשר להוסיף משימה חדשה בתיבה למעלה.'));
+                    list.append(empty);
                     return;
                 }
                 const periods = {Morning: 'בוקר', Afternoon: 'צהריים', Evening: 'ערב', Any: 'בכל שעה'};
                 tasks.forEach(task => {
-                    const row = element('div', '', 'p-4 bg-gray-50 border rounded-xl flex flex-wrap gap-3 items-center');
-                    const details = element('div', '', 'flex-1 min-w-0');
-                    details.append(element('h3', task.title, 'font-medium text-gray-800'));
+                    const row = element('article', '', 'task-card');
+                    const details = element('div', '', 'task-details');
+                    details.append(element('h3', task.title, 'task-title'));
                     const target = task.target_date || (task.priority === 1 ? 'בהקדם מהיום' : 'ב-14 הימים הקרובים');
                     const time = task.preferred_start_time ? `${task.preferred_start_time} (${task.time_mode === 'preferred' ? 'מועדפת' : 'קבועה'})` : (periods[task.preferred_time] || 'בכל שעה');
-                    details.append(element('p', `${target} | ${time} | ${task.duration_minutes} דקות`, 'text-sm text-gray-600 mt-1'));
-                    details.append(element('p', task.location_context === 'Anywhere' ? 'בכל מקום' : `${task.location_context} (${task.estimated_transit_minutes} דקות נסיעה)`, 'text-sm text-indigo-600'));
-                    if (task.unscheduled_reason) details.append(element('p', task.unscheduled_reason, 'text-sm text-amber-800 mt-2'));
-                    const edit = element('button', 'ערוך זמן יעד', 'text-indigo-600 text-sm');
+                    details.append(element('p', `${target} | ${time} | ${task.duration_minutes} דקות`, 'task-meta'));
+                    details.append(element('p', task.location_context === 'Anywhere' ? 'בכל מקום' : `${task.location_context} (${task.estimated_transit_minutes} דקות נסיעה)`, 'task-location'));
+                    if (task.unscheduled_reason) details.append(element('p', translatedReason(task.unscheduled_reason), 'task-reason'));
+                    const edit = element('button', 'ערוך זמן יעד', 'text-button');
                     edit.onclick = () => openTaskPreferences(task);
-                    const remove = element('button', 'מחק', 'text-red-600 text-sm');
+                    const remove = element('button', 'מחק', 'text-button delete-button');
                     remove.onclick = () => deleteTask(task.id, remove);
-                    row.append(details, edit, remove);
+                    edit.setAttribute('aria-label', `עריכת שעת יעד עבור ${task.title}`);
+                    remove.setAttribute('aria-label', `מחיקת ${task.title}`);
+                    const actions = element('div', '', 'task-actions');
+                    actions.append(edit, remove);
+                    row.append(details, actions);
                     list.append(row);
                 });
             } catch (error) {
+                document.getElementById('pendingCount').textContent = '—';
+                list.replaceChildren(element('p', 'לא ניתן לטעון את המשימות. אפשר לנסות שוב.', 'loading-note'));
+                const retry = element('button', 'נסה שוב', 'secondary full');
+                retry.onclick = fetchTasks;
+                list.append(retry);
                 feedback(`לא ניתן לטעון את המשימות: ${error.message}`, true);
-            }
+            } finally { list.setAttribute('aria-busy', 'false'); }
         }
         async function deleteTask(taskId, button) {
             if (!confirm('למחוק את המשימה?')) return;
@@ -173,7 +1082,7 @@
             await busy(document.querySelector('button[onclick="addTask()"]'), 'מפענח...', async () => {
                 const data = await request('/smart_add_task', jsonOptions('POST', {text}));
                 if (input.value.trim() === text) input.value = '';
-                feedback(data.message || 'המשימה נוספה. אפשר לערוך את שעת היעד לפני השיבוץ.');
+                feedback('המשימה נוספה. אפשר לערוך את שעת היעד לפני השיבוץ.');
                 await fetchTasks();
             });
         }
@@ -185,9 +1094,9 @@
                 results.replaceChildren();
                 if (data.unscheduled && data.unscheduled.length) {
                     results.classList.remove('hidden');
-                    results.append(element('h3', `${data.unscheduled.length} משימות לא שובצו`, 'font-semibold mb-2'));
+                    results.append(element('h3', `${data.unscheduled.length} משימות לא שובצו`, ''));
                     const list = document.createElement('ul');
-                    data.unscheduled.forEach(task => list.append(element('li', `${task.title}: ${task.reason}`, 'text-sm mb-1')));
+                    data.unscheduled.forEach(task => list.append(element('li', `${task.title}: ${translatedReason(task.reason)}`, '')));
                     results.append(list);
                 } else results.classList.add('hidden');
                 await refresh();
@@ -220,7 +1129,8 @@
             document.getElementById('modalLocked').closest('label').classList.toggle('hidden', !scheduled);
             ['modalStart', 'modalEnd'].forEach(id => document.getElementById(id).parentElement.classList.toggle('hidden', !scheduled));
             document.getElementById('modalError').textContent = '';
-            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('modalIntro').textContent = scheduled ? 'אפשר לשנות את השיבוץ ולשמור עליו בתכנון הבא.' : 'שעה קבועה נשמרת בדיוק. שעה מועדפת מאפשרת גמישות.';
+            revealModal();
         }
         function openTaskPreferences(task) { populateModal(task.id, task.title, task, false); }
         function openEditModal(event) {
@@ -229,7 +1139,14 @@
             document.getElementById('modalEnd').value = localInputValue(event.end);
             modalOriginalTimes = {start: localInputValue(event.start), end: localInputValue(event.end)};
         }
-        function closeModal() { document.getElementById('editModal').classList.add('hidden'); }
+        function closeModal() {
+            if (modalSaving || !modalVisible()) return;
+            document.getElementById('editModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            document.querySelector('.app').inert = false;
+            if (modalReturnFocus && modalReturnFocus.isConnected) modalReturnFocus.focus();
+            else document.getElementById('taskTitle').focus();
+        }
         async function saveFromModal() {
             const button = document.querySelector('button[onclick="saveFromModal()"]');
             const id = document.getElementById('modalEventId').value;
@@ -237,6 +1154,8 @@
             const timeMode = document.getElementById('modalTimeMode').value;
             const preferredStart = document.getElementById('modalPreferredStart').value || null;
             const errorNode = document.getElementById('modalError');
+            if (modalSaving) return;
+            setModalPending(true);
             const originalText = button.textContent;
             button.disabled = true;
             button.textContent = 'שומר...';
@@ -254,14 +1173,29 @@
                 } else if (timeMode !== modalOriginalPreferences.time_mode || preferredStart !== modalOriginalPreferences.preferred_start_time) {
                     await request(`/tasks/${id}`, jsonOptions('PATCH', {time_mode: timeMode, preferred_start_time: preferredStart}));
                 }
+                setModalPending(false);
                 closeModal();
                 feedback('השינויים נשמרו.');
                 await refresh();
-            } catch (error) { errorNode.textContent = error.message; if (modalIsScheduled) window.myCalendar.refetchEvents(); }
-            finally { button.disabled = false; button.textContent = originalText; }
+            } catch (error) { errorNode.textContent = error.message; if (modalIsScheduled) window.myCalendar?.refetchEvents(); }
+            finally { setModalPending(false); button.disabled = false; button.textContent = originalText; }
         }
         async function deleteFromModal() {
-            await deleteTask(document.getElementById('modalEventId').value, document.querySelector('button[onclick="deleteFromModal()"]'));
+            if (modalSaving || !confirm('למחוק את המשימה?')) return;
+            const button = document.querySelector('button[onclick="deleteFromModal()"]');
+            const originalText = button.textContent;
+            const id = document.getElementById('modalEventId').value;
+            document.getElementById('modalError').textContent = '';
+            setModalPending(true);
+            button.textContent = 'מוחק…';
+            try {
+                await request(`/tasks/${id}`, {method: 'DELETE'});
+                setModalPending(false);
+                closeModal();
+                feedback('המשימה נמחקה.');
+                await refresh();
+            } catch (error) { document.getElementById('modalError').textContent = error.message; }
+            finally { setModalPending(false); button.textContent = originalText; }
         }
         async function updateEventTimeOnServer(info) {
             if (!info.event.extendedProps.is_proposed || !info.event.end) { info.revert(); return; }
@@ -269,31 +1203,75 @@
                 await request(`/tasks/${info.event.id}/time`, jsonOptions('PUT', {start_time: info.event.start.toISOString(), end_time: info.event.end.toISOString(), locked: true}));
                 info.event.setExtendedProp('locked', true);
                 feedback('השיבוץ עודכן וננעל לתכנון הבא.');
-                window.myCalendar.refetchEvents();
+                window.myCalendar?.refetchEvents();
             } catch (error) { info.revert(); feedback(error.message, true); }
         }
         document.addEventListener('DOMContentLoaded', function() {
             ['modalStart', 'modalEnd'].forEach(id => document.getElementById(id).addEventListener('change', () => { document.getElementById('modalLocked').checked = true; }));
-            document.getElementById('taskTitle').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing && !document.querySelector('button[onclick="addTask()"]').disabled) addTask(); });
-            document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+            document.getElementById('taskTitle').addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing && !document.querySelector('button[onclick="addTask()"]').disabled) { event.preventDefault(); addTask(); } });
+            document.getElementById('editModal').addEventListener('click', event => { if (event.target === document.getElementById('editModal')) closeModal(); });
+            document.addEventListener('keydown', event => {
+                if (!modalVisible()) return;
+                if (event.key === 'Escape') { event.preventDefault(); closeModal(); }
+                if (event.key === 'Tab') {
+                    const nodes = modalFocusables();
+                    const first = nodes[0], last = nodes[nodes.length - 1];
+                    if (!first) { event.preventDefault(); document.querySelector('#editModal .dialog').focus(); return; }
+                    if (event.shiftKey && (document.activeElement === first || !nodes.includes(document.activeElement))) { event.preventDefault(); last.focus(); }
+                    else if (!event.shiftKey && (document.activeElement === last || !nodes.includes(document.activeElement))) { event.preventDefault(); first.focus(); }
+                }
+            });
+            if (typeof FullCalendar === 'undefined') {
+                document.getElementById('calendar').textContent = 'לא ניתן לטעון את רכיב היומן. רענן את הדף כדי לנסות שוב.';
+                document.getElementById('proposalCount').textContent = 'היומן לא נטען';
+                fetchTasks();
+                return;
+            }
             window.myCalendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-                initialView: window.innerWidth < 640 ? 'timeGridDay' : 'timeGridWeek',
+                initialView: window.innerWidth < 900 ? 'timeGridDay' : 'timeGridWeek',
+                locale: {code: 'he', week: {dow: 0, doy: 6}, direction: 'rtl', buttonText: {today: 'היום', month: 'חודש', week: 'שבוע', day: 'יום'}, allDayText: 'כל היום', moreLinkText: count => `עוד ${count}`, noEventsText: 'אין אירועים להצגה'},
+                firstDay: 0, nowIndicator: true,
+                eventDataTransform: function(event) { return event.extendedProps?.is_proposed ? {...event, color: '#176c63', title: event.title.replace(/^🤖\s*/, '')} : event; },
+                buttonText: {today: 'היום', month: 'חודש', week: 'שבוע', day: 'יום'},
+                allDayText: 'כל היום', noEventsText: 'אין אירועים להצגה',
+                slotLabelFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
+                eventTimeFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
+                slotMinTime: '06:00:00', scrollTime: '08:00:00',
+                loading: function(loading) { document.getElementById('calendarLoading').classList.toggle('hidden', !loading); document.getElementById('calendar').setAttribute('aria-busy', loading ? 'true' : 'false'); },
                 headerToolbar: {left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay'},
                 direction: 'rtl', height: 'auto', timeZone: 'local',
                 events: async function(info, success, failure) {
-                    try { success(await request(`/api/calendar/events?${new URLSearchParams({start: info.startStr, end: info.endStr})}`)); }
-                    catch (error) { failure(error); feedback(`לא ניתן לטעון את היומן: ${error.message}`, true); }
+                    try {
+                        const events = await request(`/api/calendar/events?${new URLSearchParams({start: info.startStr, end: info.endStr})}`);
+                        const count = events.filter(event => event.extendedProps && event.extendedProps.is_proposed).length;
+                        document.getElementById('proposalCount').textContent = `${count} הצעות לבדיקה`;
+                        success(events);
+                    } catch (error) {
+                        document.getElementById('proposalCount').textContent = 'היומן לא נטען';
+                        failure(error); feedback(`לא ניתן לטעון את היומן: ${error.message}`, true);
+                    }
                 },
                 editable: true,
                 eventAllow: function(dropInfo, event) { return !!event.extendedProps.is_proposed; },
                 eventDrop: updateEventTimeOnServer,
                 eventResize: updateEventTimeOnServer,
-                eventDidMount: function(info) { if (info.event.extendedProps.locked) info.el.title = 'שיבוץ נעול — נשמר בתכנון מחדש'; },
+                eventDidMount: function(info) {
+                    if (info.event.extendedProps.locked) info.el.title = 'שיבוץ נעול — נשמר בתכנון מחדש';
+                    if (info.event.extendedProps.is_proposed) {
+                        info.el.setAttribute('tabindex', '0');
+                        info.el.setAttribute('role', 'button');
+                        info.el.setAttribute('aria-label', `עריכת ${info.event.title}${info.event.extendedProps.locked ? ', שיבוץ נעול' : ''}`);
+                        info.el.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openEditModal(info.event); } });
+                    }
+                },
                 eventClick: function(info) { if (info.event.extendedProps.is_proposed) openEditModal(info.event); }
             });
             window.myCalendar.render();
+            window.addEventListener('resize', () => { window.myCalendar.updateSize(); });
             fetchTasks();
         });
-    </script>
+
+
+</script>
 </body>
 </html>
