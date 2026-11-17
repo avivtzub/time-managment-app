@@ -151,6 +151,10 @@ def read_calendar(service, start, end, include_nonblocking=False):
     events = []
     try:
         for calendar in pages(service.calendarList()):
+            # Google's Hebrew-date overlay labels every day; it is not a commitment.
+            # Keep it visible in the feed without blocking an entire scheduling day.
+            if not include_nonblocking and calendar['id'] == '#hebrew@group.v.calendar.google.com':
+                continue
             for event in pages(service.events(), calendarId=calendar['id'], timeMin=local(start).isoformat(),
                                timeMax=local(end).isoformat(), singleEvents=True, orderBy='startTime'):
                 if event.get('status') == 'cancelled': continue

@@ -44,6 +44,25 @@ class FakeGoogle:
         return Events()
 
 class BackendTests(unittest.TestCase):
+    def test_hebrew_date_overlay_does_not_block_evening_but_stays_visible(self):
+        overlay = '#hebrew@group.v.calendar.google.com'
+        event = {'id': 'hebrew-date', 'summary': '8 Kislev 5787',
+                 'start': {'date': str(self.day)},
+                 'end': {'date': str(self.day + timedelta(days=1))}}
+        google = FakeGoogle(
+            calendars={None: {'items': [{'id': 'primary', 'primary': True}, {'id': overlay}]}},
+            events={(overlay, None): {'items': [event]}})
+        item = self.add(target_date=str(self.day), preferred_time='Evening',
+                        energy_level=3, duration_minutes=60)
+        with patch.object(main, 'calendar_service', return_value=google):
+            result = main.schedule_tasks(self.session)
+        self.session.refresh(item)
+        self.assertEqual(result['scheduled_count'], 1)
+        self.assertEqual(item.start_time, datetime.combine(self.day, time(17)))
+        visible = main.read_calendar(google, self.start, self.start + timedelta(days=1),
+                                     include_nonblocking=True)
+        self.assertEqual([event['id'] for event in visible], ['hebrew-date'])
+
     def setUp(self):
         self.engine = create_engine('sqlite://')
         SQLModel.metadata.create_all(self.engine)
